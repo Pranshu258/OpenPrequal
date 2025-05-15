@@ -21,8 +21,7 @@ func main() {
 
 	// Setup HTTP server with routing
 	r := mux.NewRouter()
-	r.Use(RIFMiddleware) // Middleware to track requests in flight
-	r.HandleFunc("/proxy", ProxyHandler(selector)).Methods("POST")
+	r.Handle("/proxy", RIFMiddleware(http.HandlerFunc(ProxyHandler(selector)))).Methods("POST")
 	r.HandleFunc("/probe", ProbeHandler(probeManager)).Methods("GET")
 
 	httpAddr := ":8080"
