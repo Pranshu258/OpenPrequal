@@ -1,6 +1,8 @@
 # OpenPrequal
 OpenPrequal is a distributed, Kubernetes-native sidecar load balancer based on the [Prequal](https://www.usenix.org/system/files/nsdi24-wydrowski.pdf) algorithm. It uses asynchronous probing and Requests-In-Flight (RIF) metrics to make low-latency routing decisions.
 
+** This project is stil under development **
+
 ---
 
 ## 🚀 Features
