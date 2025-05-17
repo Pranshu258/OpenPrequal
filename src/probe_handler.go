@@ -16,6 +16,7 @@ func ProbeHandler(pm *ProbeManager) http.HandlerFunc {
 			Timestamp: time.Now(),
 		}
 		w.Header().Set("Content-Type", "application/json")
+		IncProbeRequests()
 		json.NewEncoder(w).Encode(probe)
 	}
 }
