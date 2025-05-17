@@ -2,22 +2,18 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 type Config struct {
-	ProbeRate       float64      `json:"probe_rate"`
-	ProbeTimeout    time.Duration `json:"probe_timeout"`
-	QRIFThreshold   float64      `json:"qrif_threshold"`
-	MaxProbePool    int          `json:"max_probe_pool"`
-	ReplicaList     []string     `json:"replica_list"`
+	ProbeRate     float64       `json:"probe_rate"`
+	ProbeTimeout  time.Duration `json:"probe_timeout"`
+	QRIFThreshold float64       `json:"qrif_threshold"`
+	MaxProbePool  int           `json:"max_probe_pool"`
+	ReplicaList   []string      `json:"replica_list"`
 }
 
 func LoadConfig() *Config {
@@ -75,9 +71,7 @@ func splitCommaList(s string) []string {
 
 func splitAndTrim(s, sep string) []string {
 	var result []string
-	for _, part := range splitNoEmpty(s, sep) {
-		result = append(result, part)
-	}
+	result = append(result, splitNoEmpty(s, sep)...)
 	return result
 }
 

@@ -3,23 +3,10 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 	"time"
-
-	"github.com/gorilla/mux"
 )
-
-type Config struct {
-	ProbeRate       float64      `json:"probe_rate"`
-	ProbeTimeout    time.Duration `json:"probe_timeout"`
-	QRIFThreshold   float64      `json:"qrif_threshold"`
-	MaxProbePool    int          `json:"max_probe_pool"`
-	ReplicaList     []string     `json:"replica_list"`
-}
 
 type ProbeData struct {
 	Replica   string        `json:"replica"`
@@ -37,8 +24,8 @@ type ProbeManager struct {
 
 func NewProbeManager(cfg *Config) *ProbeManager {
 	pm := &ProbeManager{
-		config:    cfg,
-		probePool: make(map[string]ProbeData),
+		config:     cfg,
+		probePool:  make(map[string]ProbeData),
 		httpClient: &http.Client{Timeout: cfg.ProbeTimeout},
 	}
 

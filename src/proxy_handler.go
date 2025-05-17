@@ -3,9 +3,7 @@ package main
 
 import (
 	"io"
-	"log"
 	"net/http"
-	"net/url"
 )
 
 func ProxyHandler(selector *ReplicaSelector) http.HandlerFunc {
@@ -15,7 +13,7 @@ func ProxyHandler(selector *ReplicaSelector) http.HandlerFunc {
 			http.Error(w, "No healthy replicas available", http.StatusServiceUnavailable)
 			return
 		}
-		
+
 		IncProxyRequests()
 
 		targetURL := "http://" + replica + r.URL.Path
