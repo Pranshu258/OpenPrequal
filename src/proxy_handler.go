@@ -15,6 +15,8 @@ func ProxyHandler(selector *ReplicaSelector) http.HandlerFunc {
 			http.Error(w, "No healthy replicas available", http.StatusServiceUnavailable)
 			return
 		}
+		
+		IncProxyRequests()
 
 		targetURL := "http://" + replica + r.URL.Path
 		proxyReq, err := http.NewRequest(r.Method, targetURL, r.Body)

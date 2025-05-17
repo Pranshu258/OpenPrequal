@@ -12,7 +12,11 @@ var requestsInFlight int32 = 0
 func RIFMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&requestsInFlight, 1)
-		defer atomic.AddInt32(&requestsInFlight, -1)
+		SetCurrentRIF(int(atomic.LoadInt32(&requestsInFlight)))
+		defer func() {
+			atomic.AddInt32(&requestsInFlight, -1)
+			SetCurrentRIF(int(atomic.LoadInt32(&requestsInFlight)))
+		}()
 		next.ServeHTTP(w, r)
 	})
 }
