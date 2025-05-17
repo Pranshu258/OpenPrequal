@@ -15,6 +15,9 @@ func main() {
 	// Load configuration
 	config := LoadConfig()
 
+	// Initialize metrics
+	InitMetrics()
+
 	// Initialize probe manager and selection engine
 	probeManager := NewProbeManager(config)
 	selector := NewReplicaSelector(config, probeManager)
@@ -23,6 +26,7 @@ func main() {
 	r := mux.NewRouter()
 	r.Handle("/proxy", RIFMiddleware(http.HandlerFunc(ProxyHandler(selector)))).Methods("POST")
 	r.HandleFunc("/probe", ProbeHandler(probeManager)).Methods("GET")
+	r.Handle("/metrics", MetricsHandler()).Methods("GET")
 
 	httpAddr := ":8080"
 	if val := os.Getenv("SIDECAR_PORT"); val != "" {
@@ -32,9 +36,3 @@ func main() {
 	log.Printf("Listening on %s\n", httpAddr)
 	log.Fatal(http.ListenAndServe(httpAddr, r))
 }
-
-// TODOs (to be implemented in other files):
-// - NewProbeManager(): manages async probing of replicas
-// - NewReplicaSelector(): implements HCL selection rule
-// - ProxyHandler(): accepts incoming requests and forwards to selected replica
-// - ProbeHandler(): serves as the endpoint for other sidecars to probe this instance
