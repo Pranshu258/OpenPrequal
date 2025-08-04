@@ -1,0 +1,37 @@
+# File: helm/openprequal/values.yaml
+replicaCount: 1
+
+image:
+  repository: your-dockerhub/prequal-sidecar
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  metricsPort: 9090
+
+env:
+  PROBE_RATE: "2"
+  PROBE_TIMEOUT_MS: "100"
+  QRIF_THRESHOLD: "0.75"
+  MAX_PROBE_POOL: "16"
+  REPLICA_LIST: "replica-1:8080,replica-2:8080"
+
+ingress:
+  enabled: true
+  host: prequal.example.com
+
+resources:
+  limits:
+    cpu: 250m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  release: prometheus-stack
+  namespace: default

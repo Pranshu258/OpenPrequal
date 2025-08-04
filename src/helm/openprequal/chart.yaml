@@ -1,0 +1,13 @@
+# File: helm/openprequal/Chart.yaml
+apiVersion: v2
+name: openprequal
+description: A distributed Prequal-based sidecar load balancer
+version: 0.1.0
+appVersion: "1.0.0"
+type: application
+authors:
+  - name: Your Name
+    email: your.email@example.com
+home: https://github.com/yourname/openprequal
+sources:
+  - https://github.com/yourname/openprequal

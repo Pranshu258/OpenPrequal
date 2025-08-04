@@ -1,0 +1,54 @@
+# File: k8s/prequal-sidecar-service.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prequal-sidecar
+  labels:
+    app: prequal-sidecar
+spec:
+  selector:
+    app: prequal-sidecar
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prequal-sidecar-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+    - host: prequal.example.com
+      http:
+        paths:
+          - path: /proxy(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: prequal-sidecar
+                port:
+                  number: 80
+          - path: /probe(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: prequal-sidecar
+                port:
+                  number: 80
+          - path: /metrics(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: prequal-sidecar
+                port:
+                  number: 9090
