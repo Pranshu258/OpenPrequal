@@ -2,6 +2,8 @@
 
 OpenPrequal is a reusable, configurable API gateway and load balancer for any HTTP-based backend service. It supports dynamic backend registration, health checks, pluggable load balancing strategies, and proxying of all HTTP methods.
 
+Based on Google's Prequal Load Balancing Algorithm - [Load is not what you should balance](https://research.google/pubs/load-is-not-what-you-should-balance-introducing-prequal/)
+
 ## Features
 - **Dynamic Backend Registration**: Backends can register/unregister themselves at runtime.
 - **Health Checks**: Periodic health checks to ensure only healthy backends receive traffic.
