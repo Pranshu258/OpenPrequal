@@ -19,6 +19,12 @@ def get_in_flight():
     return IN_FLIGHT._value.get()
 
 def get_avg_latency():
-    count = REQ_LATENCY._sum.get() if hasattr(REQ_LATENCY, '_sum') else 0.0
-    num = REQ_LATENCY._count.get() if hasattr(REQ_LATENCY, '_count') else 0
-    return (count / num) if num else 0.0
+    total = 0.0
+    count = 0.0
+    for metric in REQ_LATENCY.collect():
+        for sample in metric.samples:
+            if sample.name.endswith('_sum'):
+                total = sample.value
+            if sample.name.endswith('_count'):
+                count = sample.value
+    return (total / count) if count else 0.0
