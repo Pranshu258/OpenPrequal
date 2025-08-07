@@ -26,6 +26,7 @@ async def probe_backends():
                         backend.health = probe.status == "ok"
                         backend.in_flight_requests = probe.in_flight_requests
                         backend.avg_latency = probe.avg_latency
+                        backend.windowed_latency = probe.windowed_latency
                     else:
                         backend.health = False
                 except Exception:
