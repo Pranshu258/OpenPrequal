@@ -2,7 +2,7 @@
 import os
 import httpx
 import asyncio
-import time
+import random
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response
 from fastapi import FastAPI
@@ -48,8 +48,11 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.get("/")
-def read_root():
+async def read_root():
+    # Simulate network delay between 50ms and 300ms
+    await asyncio.sleep(random.uniform(0.05, 0.3))
     return {"message": f"Hello from backend at {BACKEND_URL}!"}
 
 app.middleware("http")(prometheus_middleware)
