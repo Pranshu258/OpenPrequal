@@ -5,11 +5,12 @@
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 import httpx
-from src.load_balancer import LoadBalancer
+
+from src.round_robin_load_balancer import RoundRobinLoadBalancer
 
 app = FastAPI()
 
-lb = LoadBalancer()
+lb = RoundRobinLoadBalancer()
 
 @app.post("/register")
 async def register_backend(data: dict):
