@@ -4,7 +4,9 @@ from fastapi.responses import JSONResponse
 import httpx
 import asyncio
 import os
+
 from src.round_robin_load_balancer import RoundRobinLoadBalancer
+from src.backend import Backend
 from contextlib import asynccontextmanager
 
 PROBE_INTERVAL = int(os.environ.get("PROXY_PROBE_INTERVAL", "60"))
@@ -13,18 +15,14 @@ lb = RoundRobinLoadBalancer()
 
 async def probe_backends():
     while True:
-        healthy = set()
-        backends = lb.list_backends()
         async with httpx.AsyncClient() as client:
-            for backend in backends:
+            for backend in list(lb.registered_backends):
                 try:
-                    resp = await client.get(f"{backend}/healthz", timeout=5)
-                    if resp.status_code == 200 and resp.json().get("status") == "ok":
-                        healthy.add(backend)
+                    resp = await client.get(f"{backend.url}/healthz", timeout=5)
+                    healthy = resp.status_code == 200 and resp.json().get("status") == "ok"
                 except Exception:
-                    pass
-        # Only keep healthy backends
-        lb.registered_backends = healthy
+                    healthy = False
+                backend.health = healthy
         lb.update_backend_iter()
         await asyncio.sleep(PROBE_INTERVAL)
 
@@ -36,25 +34,31 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.post("/register")
 async def register_backend(data: dict):
     url = data.get("url")
+    port = data.get("port")
     if not url:
         return JSONResponse({"error": "Missing 'url' in request body."}, status_code=400)
-    lb.register(url)
+    lb.register(url, port)
     return {"message": f"Backend {url} registered.", "backends": lb.list_backends()}
+
 
 @app.post("/unregister")
 async def unregister_backend(data: dict):
     url = data.get("url")
+    port = data.get("port")
     if not url:
         return JSONResponse({"error": "Missing 'url' in request body."}, status_code=400)
-    lb.unregister(url)
+    lb.unregister(url, port)
     return {"message": f"Backend {url} unregistered.", "backends": lb.list_backends()}
+
 
 @app.get("/backends")
 async def list_backends():
     return {"backends": lb.list_backends()}
+
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy(request: Request, path: str):
