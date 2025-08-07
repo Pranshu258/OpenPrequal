@@ -5,13 +5,13 @@ import httpx
 import asyncio
 import os
 
-from src.round_robin_load_balancer import RoundRobinLoadBalancer
+from src.prequal_load_balancer import PrequalLoadBalancer
 from src.probe_response import ProbeResponse
 from contextlib import asynccontextmanager
 
 PROBE_INTERVAL = int(os.environ.get("PROXY_PROBE_INTERVAL", "60"))
 
-lb = RoundRobinLoadBalancer()
+lb = PrequalLoadBalancer()
 
 async def probe_backends():
     while True:
@@ -29,7 +29,6 @@ async def probe_backends():
                         backend.health = False
                 except Exception:
                     backend.health = False
-        lb.update_backend_iter()
         await asyncio.sleep(PROBE_INTERVAL)
 
 @asynccontextmanager
