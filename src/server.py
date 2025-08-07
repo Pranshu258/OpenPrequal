@@ -2,8 +2,9 @@
 import os
 import httpx
 import asyncio
-import threading
 import time
+from prometheus_client import Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi import Response
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
@@ -21,8 +22,10 @@ backend = Backend(
     port=int(BACKEND_PORT),
     health=True,
 )
-latency_lock = threading.Lock()
-backend_latency_samples = []  # Each entry: (timestamp, latency)
+
+# Prometheus metrics
+IN_FLIGHT = Gauge('in_flight_requests', 'Number of requests in flight')
+REQ_LATENCY = Histogram('request_latency_seconds', 'Request latency in seconds')
 
 async def send_heartbeat():
     async with httpx.AsyncClient() as client:
@@ -53,31 +56,30 @@ def read_root():
 @app.middleware("http")
 async def track_latency_and_requests(request, call_next):
     start = time.time()
-    with latency_lock:
-        backend.in_flight_requests += 1
+    IN_FLIGHT.inc()
     try:
         response = await call_next(request)
         return response
     finally:
         elapsed = time.time() - start
-        now = time.time()
-        with latency_lock:
-            backend.in_flight_requests -= 1
-            backend_latency_samples.append((now, elapsed))
-            # Remove samples older than 5 minutes
-            cutoff = now - LATENCY_WINDOW_SECONDS
-            while backend_latency_samples and backend_latency_samples[0][0] < cutoff:
-                backend_latency_samples.pop(0)
-            # Update backend.avg_latency
-            if backend_latency_samples:
-                backend.avg_latency = sum(lat for _, lat in backend_latency_samples) / len(backend_latency_samples)
-            else:
-                backend.avg_latency = 0.0
+        IN_FLIGHT.dec()
+        REQ_LATENCY.observe(elapsed)
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/healthz", response_model=ProbeResponse)
 def health_probe():
+    # Get in-flight requests from Prometheus Gauge
+    in_flight = IN_FLIGHT._value.get()  # ._value is a prometheus_client internal atomic float
+    # Get average latency over last 5 minutes from Prometheus Histogram
+    # Prometheus client does not provide windowed average, so we use the total average
+    count = REQ_LATENCY._sum.get() if hasattr(REQ_LATENCY, '_sum') else 0.0
+    num = REQ_LATENCY._count.get() if hasattr(REQ_LATENCY, '_count') else 0
+    avg_latency = (count / num) if num else 0.0
     return ProbeResponse(
         status="ok",
-        in_flight_requests=backend.in_flight_requests,
-        avg_latency=backend.avg_latency
+        in_flight_requests=int(in_flight),
+        avg_latency=avg_latency
     )
