@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	log.Println("Starting OpenPrequal sidecar proxy...")
+	log.Println("Starting OpenPrequal Proxy...")
 
 	// Load configuration
 	config := LoadConfig()
