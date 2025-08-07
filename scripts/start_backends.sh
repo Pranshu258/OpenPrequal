@@ -16,3 +16,6 @@ for ((i=0; i<$NUM_SERVERS; i++)); do
 done
 
 echo "Started $NUM_SERVERS backend servers. Logs: backend_<PORT>.log"
+# Start the proxy server
+echo "Starting proxy server on port 8000"
+nohup uvicorn src.proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
