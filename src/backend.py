@@ -37,3 +37,7 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
     return {"message": f"Hello from backend at {BACKEND_URL}!"}
+
+@app.get("/healthz")
+def health_probe():
+    return {"status": "ok"}

@@ -1,16 +1,40 @@
-
-
-
-
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+
 import httpx
-
+import asyncio
+import os
 from src.round_robin_load_balancer import RoundRobinLoadBalancer
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+PROBE_INTERVAL = int(os.environ.get("PROXY_PROBE_INTERVAL", "60"))
 
 lb = RoundRobinLoadBalancer()
+
+async def probe_backends():
+    while True:
+        healthy = set()
+        backends = lb.list_backends()
+        async with httpx.AsyncClient() as client:
+            for backend in backends:
+                try:
+                    resp = await client.get(f"{backend}/healthz", timeout=5)
+                    if resp.status_code == 200 and resp.json().get("status") == "ok":
+                        healthy.add(backend)
+                except Exception:
+                    pass
+        # Only keep healthy backends
+        lb.registered_backends = healthy
+        lb.update_backend_iter()
+        await asyncio.sleep(PROBE_INTERVAL)
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(probe_backends())
+    yield
+    task.cancel()
+
+app = FastAPI(lifespan=lifespan)
 
 @app.post("/register")
 async def register_backend(data: dict):
