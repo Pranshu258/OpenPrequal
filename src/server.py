@@ -2,14 +2,29 @@
 import os
 import httpx
 import asyncio
+import threading
+import time
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
 from src.probe_response import ProbeResponse
+from src.backend import Backend
 
 PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
 BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
 BACKEND_URL = f"http://localhost:{BACKEND_PORT}"
 HEARTBEAT_SECONDS = int(os.environ.get("BACKEND_HEARTBEAT_SECONDS", "60"))
+
+LATENCY_WINDOW_SECONDS = 300  # 5 minutes
+backend = Backend(
+    url=BACKEND_URL,
+    port=int(BACKEND_PORT),
+    health=True,
+    in_flight_requests=0,
+    avg_latency=0.0
+)
+latency_lock = threading.Lock()
+backend_latency_samples = []  # Each entry: (timestamp, latency)
 
 async def send_heartbeat():
     async with httpx.AsyncClient() as client:
@@ -38,10 +53,34 @@ app = FastAPI(lifespan=lifespan)
 def read_root():
     return {"message": f"Hello from backend at {BACKEND_URL}!"}
 
+@app.middleware("http")
+async def track_latency_and_requests(request, call_next):
+    start = time.time()
+    with latency_lock:
+        backend.in_flight_requests += 1
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        elapsed = time.time() - start
+        now = time.time()
+        with latency_lock:
+            backend.in_flight_requests -= 1
+            backend_latency_samples.append((now, elapsed))
+            # Remove samples older than 5 minutes
+            cutoff = now - LATENCY_WINDOW_SECONDS
+            while backend_latency_samples and backend_latency_samples[0][0] < cutoff:
+                backend_latency_samples.pop(0)
+            # Update backend.avg_latency
+            if backend_latency_samples:
+                backend.avg_latency = sum(lat for _, lat in backend_latency_samples) / len(backend_latency_samples)
+            else:
+                backend.avg_latency = 0.0
 
 @app.get("/healthz", response_model=ProbeResponse)
 def health_probe():
-    # In a real backend, these would be tracked dynamically
-    in_flight_requests = 0
-    avg_latency = 0.0
-    return ProbeResponse(status="ok", in_flight_requests=in_flight_requests, avg_latency=avg_latency)
+    return ProbeResponse(
+        status="ok",
+        in_flight_requests=backend.in_flight_requests,
+        avg_latency=backend.avg_latency
+    )
