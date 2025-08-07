@@ -3,13 +3,16 @@ import os
 import httpx
 import asyncio
 import time
-from prometheus_client import Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from src.probe_response import ProbeResponse
 from src.backend import Backend
+
+# Prometheus metrics and helpers
+from src.probe_manager import prometheus_middleware, get_in_flight, get_avg_latency
 
 PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
 BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
@@ -22,10 +25,6 @@ backend = Backend(
     port=int(BACKEND_PORT),
     health=True,
 )
-
-# Prometheus metrics
-IN_FLIGHT = Gauge('in_flight_requests', 'Number of requests in flight')
-REQ_LATENCY = Histogram('request_latency_seconds', 'Request latency in seconds')
 
 async def send_heartbeat():
     async with httpx.AsyncClient() as client:
@@ -53,17 +52,7 @@ app = FastAPI(lifespan=lifespan)
 def read_root():
     return {"message": f"Hello from backend at {BACKEND_URL}!"}
 
-@app.middleware("http")
-async def track_latency_and_requests(request, call_next):
-    start = time.time()
-    IN_FLIGHT.inc()
-    try:
-        response = await call_next(request)
-        return response
-    finally:
-        elapsed = time.time() - start
-        IN_FLIGHT.dec()
-        REQ_LATENCY.observe(elapsed)
+app.middleware("http")(prometheus_middleware)
 
 @app.get("/metrics")
 def metrics():
@@ -71,15 +60,8 @@ def metrics():
 
 @app.get("/healthz", response_model=ProbeResponse)
 def health_probe():
-    # Get in-flight requests from Prometheus Gauge
-    in_flight = IN_FLIGHT._value.get()  # ._value is a prometheus_client internal atomic float
-    # Get average latency over last 5 minutes from Prometheus Histogram
-    # Prometheus client does not provide windowed average, so we use the total average
-    count = REQ_LATENCY._sum.get() if hasattr(REQ_LATENCY, '_sum') else 0.0
-    num = REQ_LATENCY._count.get() if hasattr(REQ_LATENCY, '_count') else 0
-    avg_latency = (count / num) if num else 0.0
     return ProbeResponse(
         status="ok",
-        in_flight_requests=int(in_flight),
-        avg_latency=avg_latency
+        in_flight_requests=int(get_in_flight()),
+        avg_latency=get_avg_latency()
     )
