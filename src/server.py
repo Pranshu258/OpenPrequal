@@ -12,7 +12,7 @@ from src.probe_response import ProbeResponse
 from src.backend import Backend
 from src.config import Config
 # Prometheus metrics and helpers
-from src.probe_manager import prometheus_middleware, get_in_flight, get_avg_latency
+from src.probe_manager import prometheus_middleware, get_in_flight, get_avg_latency, get_windowed_avg_latency
 
 backend = Backend(
     url=Config.BACKEND_URL,
@@ -60,5 +60,6 @@ def health_probe():
     return ProbeResponse(
         status="ok",
         in_flight_requests=int(get_in_flight()),
-        avg_latency=get_avg_latency()
+        avg_latency=get_avg_latency(),
+        windowed_latency=get_windowed_avg_latency()
     )
