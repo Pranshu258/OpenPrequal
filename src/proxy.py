@@ -4,7 +4,9 @@ from fastapi.responses import JSONResponse
 import httpx
 import asyncio
 import os
+
 from src.round_robin_load_balancer import RoundRobinLoadBalancer
+from src.probe_response import ProbeResponse
 from contextlib import asynccontextmanager
 
 PROBE_INTERVAL = int(os.environ.get("PROXY_PROBE_INTERVAL", "60"))
@@ -17,10 +19,16 @@ async def probe_backends():
             for backend in list(lb.registered_backends):
                 try:
                     resp = await client.get(f"{backend.url}/healthz", timeout=5)
-                    healthy = resp.status_code == 200 and resp.json().get("status") == "ok"
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        probe = ProbeResponse(**data)
+                        backend.health = probe.status == "ok"
+                        backend.in_flight_requests = probe.in_flight_requests
+                        backend.avg_latency = probe.avg_latency
+                    else:
+                        backend.health = False
                 except Exception:
-                    healthy = False
-                backend.health = healthy
+                    backend.health = False
         lb.update_backend_iter()
         await asyncio.sleep(PROBE_INTERVAL)
 

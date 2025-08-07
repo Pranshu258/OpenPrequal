@@ -1,8 +1,10 @@
+
 import os
 import httpx
 import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from src.probe_response import ProbeResponse
 
 PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
 BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
@@ -29,12 +31,17 @@ async def lifespan(app):
     yield
     task.cancel()
 
+
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 def read_root():
     return {"message": f"Hello from backend at {BACKEND_URL}!"}
 
-@app.get("/healthz")
+
+@app.get("/healthz", response_model=ProbeResponse)
 def health_probe():
-    return {"status": "ok"}
+    # In a real backend, these would be tracked dynamically
+    in_flight_requests = 0
+    avg_latency = 0.0
+    return ProbeResponse(status="ok", in_flight_requests=in_flight_requests, avg_latency=avg_latency)
