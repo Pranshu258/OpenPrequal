@@ -21,5 +21,3 @@ Both approaches—proxy-to-backend probe (active health check) and backend-to-pr
 
 **Best practice:**  
 - Combine both: Use backend heartbeats for registration/deregistration, and have the proxy periodically probe registered backends for health. This ensures the proxy only routes to healthy, live backends and can quickly remove dead ones.
-
-Let me know if you want to implement proxy-side health checks or need a hybrid solution!
