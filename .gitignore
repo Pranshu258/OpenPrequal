@@ -25,5 +25,5 @@ go.work.sum
 .env
 .DS_Store
 
-src/__pycache__
 logs
+*/__pycache__
