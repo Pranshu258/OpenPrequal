@@ -4,9 +4,7 @@ from fastapi.responses import JSONResponse
 import httpx
 import asyncio
 import os
-
 from src.round_robin_load_balancer import RoundRobinLoadBalancer
-from src.backend import Backend
 from contextlib import asynccontextmanager
 
 PROBE_INTERVAL = int(os.environ.get("PROXY_PROBE_INTERVAL", "60"))
@@ -34,7 +32,6 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
-
 @app.post("/register")
 async def register_backend(data: dict):
     url = data.get("url")
@@ -43,7 +40,6 @@ async def register_backend(data: dict):
         return JSONResponse({"error": "Missing 'url' in request body."}, status_code=400)
     lb.register(url, port)
     return {"message": f"Backend {url} registered.", "backends": lb.list_backends()}
-
 
 @app.post("/unregister")
 async def unregister_backend(data: dict):
@@ -54,11 +50,9 @@ async def unregister_backend(data: dict):
     lb.unregister(url, port)
     return {"message": f"Backend {url} unregistered.", "backends": lb.list_backends()}
 
-
 @app.get("/backends")
 async def list_backends():
     return {"backends": lb.list_backends()}
-
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy(request: Request, path: str):
