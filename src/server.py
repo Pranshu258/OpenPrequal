@@ -10,19 +10,13 @@ from contextlib import asynccontextmanager
 
 from src.probe_response import ProbeResponse
 from src.backend import Backend
-
+from src.config import Config
 # Prometheus metrics and helpers
 from src.probe_manager import prometheus_middleware, get_in_flight, get_avg_latency
 
-PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
-BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
-BACKEND_URL = f"http://localhost:{BACKEND_PORT}"
-HEARTBEAT_SECONDS = int(os.environ.get("BACKEND_HEARTBEAT_SECONDS", "30"))
-
-LATENCY_WINDOW_SECONDS = 300  # 5 minutes
 backend = Backend(
-    url=BACKEND_URL,
-    port=int(BACKEND_PORT),
+    url=Config.BACKEND_URL,
+    port=int(Config.BACKEND_PORT),
     health=True,
 )
 
@@ -30,14 +24,14 @@ async def send_heartbeat():
     async with httpx.AsyncClient() as client:
         while True:
             try:
-                resp = await client.post(f"{PROXY_URL}/register", json={"url": BACKEND_URL})
+                resp = await client.post(f"{Config.PROXY_URL}/register", json={"url": Config.BACKEND_URL})
                 if resp.status_code == 200:
-                    print(f"[Heartbeat] Registered with proxy at {PROXY_URL} as {BACKEND_URL}")
+                    print(f"[Heartbeat] Registered with proxy at {Config.PROXY_URL} as {Config.BACKEND_URL}")
                 else:
                     print(f"[Heartbeat] Failed to register with proxy: {resp.text}")
             except Exception as e:
                 print(f"[Heartbeat] Error registering with proxy: {e}")
-            await asyncio.sleep(HEARTBEAT_SECONDS)
+            await asyncio.sleep(Config.HEARTBEAT_SECONDS)
 
 @asynccontextmanager
 async def lifespan(app):
@@ -48,11 +42,12 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.get("/")
 async def read_root():
     # Simulate network delay between 50ms and 300ms
     await asyncio.sleep(random.uniform(0.05, 0.3))
-    return {"message": f"Hello from backend at {BACKEND_URL}!"}
+    return {"message": f"Hello from backend at {Config.BACKEND_URL}!"}
 
 app.middleware("http")(prometheus_middleware)
 

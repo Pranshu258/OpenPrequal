@@ -3,13 +3,14 @@ from fastapi.responses import JSONResponse
 
 import httpx
 import asyncio
-import os
+
+from src.config import Config
 
 from src.prequal_load_balancer import PrequalLoadBalancer
 from src.probe_response import ProbeResponse
 from contextlib import asynccontextmanager
 
-PROBE_INTERVAL = int(os.environ.get("PROXY_PROBE_INTERVAL", "60"))
+PROBE_INTERVAL = int(getattr(Config, "PROXY_PROBE_INTERVAL", 60))
 
 lb = PrequalLoadBalancer()
 
