@@ -13,15 +13,13 @@ from src.backend import Backend
 PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
 BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
 BACKEND_URL = f"http://localhost:{BACKEND_PORT}"
-HEARTBEAT_SECONDS = int(os.environ.get("BACKEND_HEARTBEAT_SECONDS", "60"))
+HEARTBEAT_SECONDS = int(os.environ.get("BACKEND_HEARTBEAT_SECONDS", "30"))
 
 LATENCY_WINDOW_SECONDS = 300  # 5 minutes
 backend = Backend(
     url=BACKEND_URL,
     port=int(BACKEND_PORT),
     health=True,
-    in_flight_requests=0,
-    avg_latency=0.0
 )
 latency_lock = threading.Lock()
 backend_latency_samples = []  # Each entry: (timestamp, latency)
@@ -45,7 +43,6 @@ async def lifespan(app):
     task = asyncio.create_task(send_heartbeat())
     yield
     task.cancel()
-
 
 app = FastAPI(lifespan=lifespan)
 
