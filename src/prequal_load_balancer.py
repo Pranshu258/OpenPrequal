@@ -1,7 +1,7 @@
-import itertools
 from typing import Set, Optional, List
 from src.load_balancer import LoadBalancer
 from src.backend import Backend
+import random
 
 class PrequalLoadBalancer(LoadBalancer):
     def __init__(self):
@@ -20,7 +20,9 @@ class PrequalLoadBalancer(LoadBalancer):
         if not healthy_backends:
             return None
         # Lexicographic ordering: (avg_latency, in_flight_requests)
-        selected = min(healthy_backends, key=lambda b: (b.avg_latency, b.in_flight_requests))
+        min_tuple = min((b.avg_latency, b.in_flight_requests) for b in healthy_backends)
+        candidates = [b for b in healthy_backends if (b.avg_latency, b.in_flight_requests) == min_tuple]
+        selected = random.choice(candidates)
         return selected.url
 
     def list_backends(self) -> List[dict]:
