@@ -1,0 +1,25 @@
+INFO:     Started server process [22154]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8002 (Press CTRL+C to quit)
+Registered with proxy at http://localhost:8000 as http://localhost:8002
+INFO:     127.0.0.1:65235 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65248 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65255 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65259 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65263 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65267 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65271 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65275 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65279 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65283 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65287 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65291 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65295 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65299 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65303 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65307 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65311 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65315 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65319 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65323 - "GET / HTTP/1.1" 200 OK
