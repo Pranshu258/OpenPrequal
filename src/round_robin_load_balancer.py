@@ -4,7 +4,6 @@ from typing import Set, Optional, List, Union
 from src.load_balancer import LoadBalancer
 from src.backend import Backend
 
-
 class RoundRobinLoadBalancer(LoadBalancer):
     def __init__(self):
         self.registered_backends: Set[Backend] = set()

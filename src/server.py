@@ -48,7 +48,6 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
-
 @app.get("/")
 async def read_root():
     # Simulate network delay between 50ms and 300ms
