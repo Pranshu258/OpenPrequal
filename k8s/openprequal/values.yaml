@@ -1,0 +1,17 @@
+proxy:
+  image: "<your-docker-username>/openprequal-proxy:latest"
+  replicaCount: 1
+  service:
+    type: LoadBalancer
+    port: 8000
+  env:
+    LOAD_BALANCER_CLASS: "src.prequal_load_balancer.PrequalLoadBalancer"
+backend:
+  image: "<your-docker-username>/openprequal-backend:latest"
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8001
+  env:
+    PROXY_URL: "http://openprequal-proxy:8000"
+    BACKEND_PORT: "8001"

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: openprequal
+version: 0.1.0
+description: A reusable API gateway and load balancer for any HTTP-based backend service.
+type: application
