@@ -1,0 +1,40 @@
+import asyncio
+
+import httpx
+
+from src.config import Config
+
+
+class HeartbeatClient:
+    def __init__(self, backend_url, proxy_url, heartbeat_interval):
+        self.backend_url = backend_url
+        self.proxy_url = proxy_url
+        self.heartbeat_interval = heartbeat_interval
+        self._task = None
+        self._running = False
+
+    async def start(self):
+        self._running = True
+        self._task = asyncio.create_task(self._heartbeat_loop())
+
+    async def stop(self):
+        self._running = False
+        if self._task:
+            self._task.cancel()
+
+    async def _heartbeat_loop(self):
+        async with httpx.AsyncClient() as client:
+            while self._running:
+                try:
+                    resp = await client.post(
+                        f"{self.proxy_url}/register", json={"url": self.backend_url}
+                    )
+                    if resp.status_code == 200:
+                        print(
+                            f"[Heartbeat] Registered with proxy at {self.proxy_url} as {self.backend_url}"
+                        )
+                    else:
+                        print(f"[Heartbeat] Failed to register with proxy: {resp.text}")
+                except Exception as e:
+                    print(f"[Heartbeat] Error registering with proxy: {e}")
+                await asyncio.sleep(self.heartbeat_interval)

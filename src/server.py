@@ -3,14 +3,12 @@ import os
 import random
 from contextlib import asynccontextmanager
 
-import httpx
 from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from src.backend import Backend
 from src.config import Config
-
-# Prometheus metrics and helpers
+from src.heartbeat_client import HeartbeatClient
 from src.probe_manager import (
     get_avg_latency,
     get_in_flight,
@@ -25,31 +23,18 @@ backend = Backend(
     health=True,
 )
 
-
-async def send_heartbeat():
-    async with httpx.AsyncClient() as client:
-        while True:
-            try:
-                resp = await client.post(
-                    f"{Config.PROXY_URL}/register", json={"url": Config.BACKEND_URL}
-                )
-                if resp.status_code == 200:
-                    print(
-                        f"[Heartbeat] Registered with proxy at {Config.PROXY_URL} as {Config.BACKEND_URL}"
-                    )
-                else:
-                    print(f"[Heartbeat] Failed to register with proxy: {resp.text}")
-            except Exception as e:
-                print(f"[Heartbeat] Error registering with proxy: {e}")
-            await asyncio.sleep(Config.HEARTBEAT_SECONDS)
+heartbeat_client = HeartbeatClient(
+    backend_url=Config.BACKEND_URL,
+    proxy_url=Config.PROXY_URL,
+    heartbeat_interval=Config.HEARTBEAT_SECONDS,
+)
 
 
 @asynccontextmanager
 async def lifespan(app):
-    # Start heartbeat background task
-    task = asyncio.create_task(send_heartbeat())
+    await heartbeat_client.start()
     yield
-    task.cancel()
+    await heartbeat_client.stop()
 
 
 app = FastAPI(lifespan=lifespan)
