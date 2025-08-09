@@ -1,5 +1,6 @@
-from typing import Set, Optional, List
 from abc import ABC, abstractmethod
+from typing import List, Optional, Set
+
 
 class LoadBalancer(ABC):
     """

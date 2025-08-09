@@ -1,28 +1,40 @@
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
-
-import httpx
 import asyncio
-
-from src.config import Config
-
 
 # Allow pluggable load balancer class via config or env
 import importlib
-from src.probe_response import ProbeResponse
 from contextlib import asynccontextmanager
 
-def get_load_balancer():
-    lb_class_path = getattr(Config, "LOAD_BALANCER_CLASS", "src.prequal_load_balancer.PrequalLoadBalancer")
+import httpx
+
+# Dependency injection for the load balancer
+from fastapi import Depends, FastAPI, Request, Response
+from fastapi.responses import JSONResponse
+
+from src.config import Config
+from src.probe_response import ProbeResponse
+
+
+def load_balancer_factory():
+    lb_class_path = getattr(
+        Config, "LOAD_BALANCER_CLASS", "src.prequal_load_balancer.PrequalLoadBalancer"
+    )
     module_name, class_name = lb_class_path.rsplit(".", 1)
     module = importlib.import_module(module_name)
     return getattr(module, class_name)()
 
+
+# Create a single instance for the app lifetime
+lb_instance = load_balancer_factory()
+
+
+def get_load_balancer():
+    return lb_instance
+
+
 PROBE_INTERVAL = int(getattr(Config, "PROXY_PROBE_INTERVAL", 60))
 
-lb = get_load_balancer()
 
-async def probe_backends():
+async def probe_backends(lb=Depends(get_load_balancer)):
     # Health check logic can be customized per service type
     while True:
         async with httpx.AsyncClient() as client:
@@ -35,14 +47,19 @@ async def probe_backends():
                         data = resp.json()
                         probe = ProbeResponse(**data)
                         backend.health = probe.status == "ok"
-                        backend.in_flight_requests = getattr(probe, "in_flight_requests", 0)
+                        backend.in_flight_requests = getattr(
+                            probe, "in_flight_requests", 0
+                        )
                         backend.avg_latency = getattr(probe, "avg_latency", 0.0)
-                        backend.windowed_latency = getattr(probe, "windowed_latency", 0.0)
+                        backend.windowed_latency = getattr(
+                            probe, "windowed_latency", 0.0
+                        )
                     else:
                         backend.health = False
                 except Exception:
                     backend.health = False
         await asyncio.sleep(PROBE_INTERVAL)
+
 
 @asynccontextmanager
 async def lifespan(app):
@@ -50,12 +67,13 @@ async def lifespan(app):
     yield
     task.cancel()
 
+
 app = FastAPI(lifespan=lifespan)
 
 
 # Registration endpoint is generic, can be extended for auth, metadata, etc.
 @app.post("/register")
-async def register_backend(data: dict):
+async def register_backend(data: dict, lb=Depends(get_load_balancer)):
     url = data.get("url")
     port = data.get("port")
     # Allow for custom registration logic via hook
@@ -65,13 +83,15 @@ async def register_backend(data: dict):
         module = importlib.import_module(module_name)
         return await getattr(module, func_name)(data, lb)
     if not url:
-        return JSONResponse({"error": "Missing 'url' in request body."}, status_code=400)
+        return JSONResponse(
+            {"error": "Missing 'url' in request body."}, status_code=400
+        )
     lb.register(url, port)
     return {"message": f"Backend {url} registered.", "backends": lb.list_backends()}
 
 
 @app.post("/unregister")
-async def unregister_backend(data: dict):
+async def unregister_backend(data: dict, lb=Depends(get_load_balancer)):
     url = data.get("url")
     port = data.get("port")
     # Allow for custom unregister logic via hook
@@ -81,18 +101,23 @@ async def unregister_backend(data: dict):
         module = importlib.import_module(module_name)
         return await getattr(module, func_name)(data, lb)
     if not url:
-        return JSONResponse({"error": "Missing 'url' in request body."}, status_code=400)
+        return JSONResponse(
+            {"error": "Missing 'url' in request body."}, status_code=400
+        )
     lb.unregister(url, port)
     return {"message": f"Backend {url} unregistered.", "backends": lb.list_backends()}
 
+
 @app.get("/backends")
-async def list_backends():
+async def list_backends(lb=Depends(get_load_balancer)):
     return {"backends": lb.list_backends()}
 
 
 # Generic proxy endpoint, supports all HTTP methods and paths
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-async def proxy(request: Request, path: str):
+@app.api_route(
+    "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+)
+async def proxy(request: Request, path: str, lb=Depends(get_load_balancer)):
     backend_url = lb.get_next_backend()
     if not backend_url:
         return Response(content="No backend servers registered.", status_code=503)
@@ -122,7 +147,7 @@ async def proxy(request: Request, path: str):
                 headers=headers,
                 content=body,
                 params=request.query_params,
-                timeout=10.0
+                timeout=10.0,
             )
         except httpx.RequestError as e:
             return Response(content=f"Upstream error: {e}", status_code=502)
@@ -137,5 +162,7 @@ async def proxy(request: Request, path: str):
     return Response(
         content=resp.content,
         status_code=resp.status_code,
-        headers={k: v for k, v in resp.headers.items() if k.lower() != "content-encoding"}
+        headers={
+            k: v for k, v in resp.headers.items() if k.lower() != "content-encoding"
+        },
     )

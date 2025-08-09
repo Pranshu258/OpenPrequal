@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from src.proxy import app
+
 
 # This test assumes at least one backend is registered and healthy.
 def test_proxy_forwarding(client):

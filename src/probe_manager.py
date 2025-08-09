@@ -1,15 +1,18 @@
-import time
 import threading
+import time
+
 from prometheus_client import Gauge, Histogram
+
 from src.config import Config
 
-IN_FLIGHT = Gauge('in_flight_requests', 'Number of requests in flight')
-REQ_LATENCY = Histogram('request_latency_seconds', 'Request latency in seconds')
+IN_FLIGHT = Gauge("in_flight_requests", "Number of requests in flight")
+REQ_LATENCY = Histogram("request_latency_seconds", "Request latency in seconds")
 
 
 # For rolling window average
 _latency_samples = []  # Each entry: (timestamp, latency)
 _latency_lock = threading.Lock()
+
 
 async def prometheus_middleware(request, call_next):
     start = time.time()
@@ -29,6 +32,7 @@ async def prometheus_middleware(request, call_next):
             while _latency_samples and _latency_samples[0][0] < cutoff:
                 _latency_samples.pop(0)
 
+
 def get_in_flight():
     return IN_FLIGHT._value.get()
 
@@ -39,11 +43,12 @@ def get_avg_latency():
     count = 0.0
     for metric in REQ_LATENCY.collect():
         for sample in metric.samples:
-            if sample.name.endswith('_sum'):
+            if sample.name.endswith("_sum"):
                 total = sample.value
-            if sample.name.endswith('_count'):
+            if sample.name.endswith("_count"):
                 count = sample.value
     return (total / count) if count else 0.0
+
 
 def get_windowed_avg_latency():
     # Rolling 5-minute window average

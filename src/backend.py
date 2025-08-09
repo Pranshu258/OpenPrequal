@@ -2,7 +2,15 @@ from typing import Optional
 
 
 class Backend:
-    def __init__(self, url: str, port: Optional[int] = None, health: bool = False, in_flight_requests: int = 0, avg_latency: float = 0.0, windowed_latency: float = 0.0):
+    def __init__(
+        self,
+        url: str,
+        port: Optional[int] = None,
+        health: bool = False,
+        in_flight_requests: int = 0,
+        avg_latency: float = 0.0,
+        windowed_latency: float = 0.0,
+    ):
         self.url = url
         self.port = port
         self.health = health
@@ -10,16 +18,13 @@ class Backend:
         self.avg_latency = avg_latency
         self.windowed_latency = windowed_latency
 
-
     def __eq__(self, other):
         if not isinstance(other, Backend):
             return False
         return self.url == other.url and self.port == other.port
 
-
     def __hash__(self):
         return hash((self.url, self.port))
-
 
     def __repr__(self):
         return (

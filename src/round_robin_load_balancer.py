@@ -1,8 +1,9 @@
-
 import itertools
-from typing import Set, Optional, List, Union
-from src.load_balancer import LoadBalancer
+from typing import List, Optional, Set, Union
+
 from src.backend import Backend
+from src.load_balancer import LoadBalancer
+
 
 class RoundRobinLoadBalancer(LoadBalancer):
     def __init__(self):
