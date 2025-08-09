@@ -14,7 +14,7 @@ START_PORT=${3:-8001}
 
 for ((i=0; i<$NUM_SERVERS; i++)); do
   PORT=$((START_PORT + i))
-  echo "Starting backend server on port $PORT (registering with $PROXY_URL)"
+  echo "Starting backend server on port $PORT"
   PROXY_URL=$PROXY_URL BACKEND_PORT=$PORT nohup uvicorn src.server:app --port $PORT > logs/backend_$PORT.log 2>&1 &
 done
 
