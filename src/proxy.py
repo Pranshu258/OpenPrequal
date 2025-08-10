@@ -10,6 +10,15 @@ from src.config import Config
 from src.proxy_handler import ProxyHandler
 
 
+def registry_factory():
+    registry_path = getattr(
+        Config, "REGISTRY_CLASS", "src.backend_registry.BackendRegistry"
+    )
+    module_name, class_name = registry_path.rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)()
+
+
 def load_balancer_factory():
     lb_class_path = getattr(
         Config, "LOAD_BALANCER_CLASS", "src.prequal_load_balancer.PrequalLoadBalancer"
