@@ -24,7 +24,7 @@ backend = Backend(
 )
 
 heartbeat_client = HeartbeatClient(
-    backend_url=Config.BACKEND_URL,
+    backend=backend,
     proxy_url=Config.PROXY_URL,
     heartbeat_interval=Config.HEARTBEAT_SECONDS,
 )

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request, Response
 
+from src.backend import Backend
 from src.backend_probe_manager import BackendProbeManager
 from src.backend_registry import BackendRegistry
 from src.config import Config
@@ -48,18 +49,13 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/register")
-async def register_backend(data: dict):
-    return await registry.register_backend(data)
+async def register_backend(data: Backend):
+    return await registry.register(data)
 
 
 @app.post("/unregister")
-async def unregister_backend(data: dict):
-    return await registry.unregister_backend(data)
-
-
-@app.get("/backends")
-async def list_backends():
-    return registry.list_backends()
+async def unregister_backend(data: Backend):
+    return await registry.unregister(data)
 
 
 @app.api_route(

@@ -2,12 +2,12 @@ import asyncio
 
 import httpx
 
-from src.config import Config
+from src.backend import Backend
 
 
 class HeartbeatClient:
-    def __init__(self, backend_url, proxy_url, heartbeat_interval):
-        self.backend_url = backend_url
+    def __init__(self, backend: Backend, proxy_url, heartbeat_interval):
+        self.backend = backend
         self.proxy_url = proxy_url
         self.heartbeat_interval = heartbeat_interval
         self._task = None
@@ -27,11 +27,11 @@ class HeartbeatClient:
             while self._running:
                 try:
                     resp = await client.post(
-                        f"{self.proxy_url}/register", json={"url": self.backend_url}
+                        f"{self.proxy_url}/register", json=self.backend.model_dump()
                     )
                     if resp.status_code == 200:
                         print(
-                            f"[Heartbeat] Registered with proxy at {self.proxy_url} as {self.backend_url}"
+                            f"[Heartbeat] Registered with proxy at {self.proxy_url} as {self.backend.url}"
                         )
                     else:
                         print(f"[Heartbeat] Failed to register with proxy: {resp.text}")
