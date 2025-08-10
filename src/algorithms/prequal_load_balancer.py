@@ -1,18 +1,25 @@
+import logging
 import random
 from typing import List, Optional, Set
 
 from abstractions.load_balancer import LoadBalancer
 from abstractions.registry import Registry
+from config.logging_config import setup_logging
 from contracts.backend import Backend
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 class PrequalLoadBalancer(LoadBalancer):
     def __init__(self, registry):
         self.registry = registry
+        logger.info("PrequalLoadBalancer initialized.")
 
     def get_next_backend(self) -> Optional[str]:
         healthy_backends = [b for b in self.registry.list_backends() if b.health]
         if not healthy_backends:
+            logger.warning("No healthy backends available for prequal load balancer.")
             return None
         # Lexicographic ordering: (avg_latency, in_flight_requests)
         min_tuple = min(
@@ -24,6 +31,7 @@ class PrequalLoadBalancer(LoadBalancer):
             for b in healthy_backends
             if (b.windowed_latency, b.in_flight_requests, b.avg_latency) == min_tuple
         ]
-        print(healthy_backends)
+        logger.debug(f"Healthy backends: {healthy_backends}")
         selected = random.choice(candidates)
+        logger.info(f"Selected backend (prequal): {selected.url}")
         return selected.url

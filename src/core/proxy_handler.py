@@ -1,14 +1,20 @@
 import importlib
+import logging
 
 import httpx
 from fastapi import Request, Response
 
 from config.config import Config
+from config.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 class ProxyHandler:
     async def handle_proxy(self, request: Request, path: str, backend_url: str):
         if not backend_url:
+            logger.error("No backend servers registered. Returning 503.")
             return Response(content="No backend servers registered.", status_code=503)
 
         rewrite_path = getattr(Config, "CUSTOM_PATH_REWRITE", None)
@@ -16,17 +22,20 @@ class ProxyHandler:
             module_name, func_name = rewrite_path.rsplit(".", 1)
             module = importlib.import_module(module_name)
             path = getattr(module, func_name)(path, request)
+            logger.debug(f"Path rewritten using custom hook: {path}")
 
         url = f"{backend_url}/{path}"
         method = request.method
         headers = dict(request.headers)
         body = await request.body()
+        logger.info(f"Proxying {method} request to {url}")
 
         custom_request_hook = getattr(Config, "CUSTOM_REQUEST_HOOK", None)
         if custom_request_hook:
             module_name, func_name = custom_request_hook.rsplit(".", 1)
             module = importlib.import_module(module_name)
             await getattr(module, func_name)(request, url, headers, body)
+            logger.debug("Custom request hook executed.")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -38,7 +47,9 @@ class ProxyHandler:
                     params=request.query_params,
                     timeout=10.0,
                 )
+                logger.info(f"Received response from backend: {resp.status_code}")
             except httpx.RequestError as e:
+                logger.error(f"Upstream error: {e}")
                 return Response(content=f"Upstream error: {e}", status_code=502)
 
         custom_response_hook = getattr(Config, "CUSTOM_RESPONSE_HOOK", None)
@@ -46,6 +57,7 @@ class ProxyHandler:
             module_name, func_name = custom_response_hook.rsplit(".", 1)
             module = importlib.import_module(module_name)
             await getattr(module, func_name)(resp)
+            logger.debug("Custom response hook executed.")
 
         return Response(
             content=resp.content,

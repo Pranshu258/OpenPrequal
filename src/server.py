@@ -1,5 +1,12 @@
 import asyncio
+import logging
 import random
+
+from config.logging_config import setup_logging
+
+# Set up logging at the start of the module
+setup_logging()
+logger = logging.getLogger(__name__)
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
@@ -55,10 +62,14 @@ def metrics():
 
 @app.get("/healthz", response_model=ProbeResponse)
 def health_probe():
-    print(f"probe requested from {Config.BACKEND_URL}")
+    logger.info(f"probe requested from {Config.BACKEND_URL}")
     return ProbeResponse(
         status="ok",
         in_flight_requests=int(metrics_manager.get_in_flight()),
         avg_latency=metrics_manager.get_avg_latency(),
         windowed_latency=metrics_manager.get_windowed_avg_latency(),
     )
+
+
+# Example: log server startup
+logger.info("Backend server module loaded and logging is configured.")

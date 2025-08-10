@@ -1,9 +1,14 @@
+import logging
 import threading
 import time
 
 from prometheus_client import Gauge, Histogram
 
 from config.config import Config
+from config.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 class MetricsManager:
@@ -14,6 +19,7 @@ class MetricsManager:
         )
         self._latency_samples = []  # Each entry: (timestamp, latency)
         self._latency_lock = threading.Lock()
+        logger.info("MetricsManager initialized.")
 
     async def prometheus_middleware(self, request, call_next):
         start = time.time()
@@ -32,9 +38,14 @@ class MetricsManager:
                 cutoff = now - Config.LATENCY_WINDOW_SECONDS
                 while self._latency_samples and self._latency_samples[0][0] < cutoff:
                     self._latency_samples.pop(0)
+            logger.debug(
+                f"Request processed in {elapsed:.4f}s. In-flight: {self.get_in_flight()}"
+            )
 
     def get_in_flight(self):
-        return self.IN_FLIGHT._value.get()
+        val = self.IN_FLIGHT._value.get()
+        logger.debug(f"Current in-flight requests: {val}")
+        return val
 
     def get_avg_latency(self):
         total = 0.0
@@ -45,12 +56,17 @@ class MetricsManager:
                     total = sample.value
                 if sample.name.endswith("_count"):
                     count = sample.value
-        return (total / count) if count else 0.0
+        avg = (total / count) if count else 0.0
+        logger.debug(f"Average latency: {avg:.4f}s")
+        return avg
 
     def get_windowed_avg_latency(self):
         with self._latency_lock:
             if not self._latency_samples:
+                logger.debug("No latency samples for windowed average.")
                 return 0.0
-            return sum(lat for _, lat in self._latency_samples) / len(
+            avg = sum(lat for _, lat in self._latency_samples) / len(
                 self._latency_samples
             )
+            logger.debug(f"Windowed average latency: {avg:.4f}s")
+            return avg
