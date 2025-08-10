@@ -57,6 +57,7 @@ def metrics():
 
 @app.get("/healthz", response_model=ProbeResponse)
 def health_probe():
+    print(f"probe requested from {Config.BACKEND_URL}")
     return ProbeResponse(
         status="ok",
         in_flight_requests=int(get_in_flight()),
