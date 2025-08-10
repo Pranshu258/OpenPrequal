@@ -10,6 +10,7 @@ from src.config import Config
 from src.proxy_handler import ProxyHandler
 
 
+# Create registry first, then pass it to the load balancer
 def registry_factory():
     registry_path = getattr(
         Config, "REGISTRY_CLASS", "src.backend_registry.BackendRegistry"
@@ -19,18 +20,20 @@ def registry_factory():
     return getattr(module, class_name)()
 
 
-def load_balancer_factory():
+registry = registry_factory()
+
+
+def load_balancer_factory(registry):
     lb_class_path = getattr(
         Config, "LOAD_BALANCER_CLASS", "src.prequal_load_balancer.PrequalLoadBalancer"
     )
     module_name, class_name = lb_class_path.rsplit(".", 1)
     module = importlib.import_module(module_name)
-    return getattr(module, class_name)()
+    return getattr(module, class_name)(registry)
 
 
-lb_instance = load_balancer_factory()
+lb_instance = load_balancer_factory(registry)
 probe_manager = BackendProbeManager(lb_instance)
-registry = BackendRegistry(lb_instance)
 proxy_handler = ProxyHandler(lb_instance)
 
 
