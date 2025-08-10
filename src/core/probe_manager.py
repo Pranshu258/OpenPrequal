@@ -3,7 +3,7 @@ import time
 
 from prometheus_client import Gauge, Histogram
 
-from src.config import Config
+from config.config import Config
 
 IN_FLIGHT = Gauge("in_flight_requests", "Number of requests in flight")
 REQ_LATENCY = Histogram("request_latency_seconds", "Request latency in seconds")

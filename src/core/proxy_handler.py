@@ -3,7 +3,7 @@ import importlib
 import httpx
 from fastapi import Request, Response
 
-from src.config import Config
+from config.config import Config
 
 
 class ProxyHandler:

@@ -6,11 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from config.config import Config
 from contracts.backend import Backend
 from contracts.probe_response import ProbeResponse
-from src.config import Config
-from src.heartbeat_client import HeartbeatClient
-from src.probe_manager import (
+from core.heartbeat_client import HeartbeatClient
+from core.probe_manager import (
     get_avg_latency,
     get_in_flight,
     get_windowed_avg_latency,

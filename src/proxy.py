@@ -2,9 +2,9 @@ import importlib
 
 from fastapi import FastAPI, Request
 
+from config.config import Config
 from contracts.backend import Backend
-from src.config import Config
-from src.proxy_handler import ProxyHandler
+from core.proxy_handler import ProxyHandler
 
 
 # Create registry first, then pass it to the load balancer
