@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from src.backend import Backend
+from contracts.backend import Backend
+from contracts.probe_response import ProbeResponse
 from src.config import Config
 from src.heartbeat_client import HeartbeatClient
 from src.probe_manager import (
@@ -15,7 +16,6 @@ from src.probe_manager import (
     get_windowed_avg_latency,
     prometheus_middleware,
 )
-from src.probe_response import ProbeResponse
 
 backend = Backend(
     url=Config.BACKEND_URL,

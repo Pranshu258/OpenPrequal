@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from src.backend import Backend
+from contracts.backend import Backend
 
 
 class Registry(ABC):

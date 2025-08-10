@@ -2,7 +2,7 @@ import importlib
 
 from fastapi import FastAPI, Request
 
-from src.backend import Backend
+from contracts.backend import Backend
 from src.config import Config
 from src.proxy_handler import ProxyHandler
 

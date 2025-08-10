@@ -1,6 +1,6 @@
 from typing import List
 
-from src.backend import Backend
+from contracts.backend import Backend
 
 
 class BackendRegistry:

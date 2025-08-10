@@ -2,7 +2,7 @@ import asyncio
 
 import httpx
 
-from src.backend import Backend
+from contracts.backend import Backend
 
 
 class HeartbeatClient:

@@ -1,9 +1,9 @@
 import random
 from typing import List, Optional, Set
 
-from src.backend import Backend
-from src.load_balancer import LoadBalancer
-from src.registry import Registry
+from abstractions.load_balancer import LoadBalancer
+from abstractions.registry import Registry
+from contracts.backend import Backend
 
 
 class PrequalLoadBalancer(LoadBalancer):

@@ -1,7 +1,7 @@
 from typing import Optional
 
-from src.backend import Backend
-from src.load_balancer import LoadBalancer
+from abstractions.load_balancer import LoadBalancer
+from contracts.backend import Backend
 
 
 class RoundRobinLoadBalancer(LoadBalancer):
