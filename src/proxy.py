@@ -1,12 +1,10 @@
-import asyncio
 import importlib
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request, Response
+from fastapi import FastAPI, Request
 
 from src.backend import Backend
 from src.backend_probe_manager import BackendProbeManager
-from src.backend_registry import BackendRegistry
 from src.config import Config
 from src.proxy_handler import ProxyHandler
 
@@ -21,9 +19,6 @@ def registry_factory():
     return getattr(module, class_name)()
 
 
-registry = registry_factory()
-
-
 def load_balancer_factory(registry):
     lb_class_path = getattr(
         Config, "LOAD_BALANCER_CLASS", "src.prequal_load_balancer.PrequalLoadBalancer"
@@ -33,13 +28,15 @@ def load_balancer_factory(registry):
     return getattr(module, class_name)(registry)
 
 
+registry = registry_factory()
+
 lb_instance = load_balancer_factory(registry)
 probe_manager = BackendProbeManager(lb_instance)
-proxy_handler = ProxyHandler(lb_instance)
+proxy_handler = ProxyHandler()
 
 
 @asynccontextmanager
-async def lifespan(app):
+async def lifespan():
     await probe_manager.start()
     yield
     await probe_manager.stop()
@@ -62,4 +59,5 @@ async def unregister_backend(data: Backend):
     "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 )
 async def proxy(request: Request, path: str):
-    return await proxy_handler.handle_proxy(request, path)
+    backend_url = lb_instance.get_next_backend()
+    return await proxy_handler.handle_proxy(request, path, backend_url)
