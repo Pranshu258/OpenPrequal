@@ -6,6 +6,9 @@ class Config:
     BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
     BACKEND_URL = os.environ.get("BACKEND_URL", f"http://localhost:{BACKEND_PORT}")
     HEARTBEAT_SECONDS = int(os.environ.get("BACKEND_HEARTBEAT_SECONDS", "30"))
+    HEARTBEAT_TIMEOUT = int(
+        os.environ.get("BACKEND_HEARTBEAT_TIMEOUT", str(2 * HEARTBEAT_SECONDS))
+    )
     LATENCY_WINDOW_SECONDS = int(
         os.environ.get("LATENCY_WINDOW_SECONDS", "300")
     )  # 5 minutes

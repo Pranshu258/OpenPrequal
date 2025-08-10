@@ -28,10 +28,11 @@ def import_from_string(path: str) -> Type[Any]:
 
 def registry_factory():
     key = getattr(Config, "REGISTRY_CLASS", "default")
+    heartbeat_timeout = getattr(Config, "HEARTBEAT_TIMEOUT", None)
     if key in REGISTRY_CLASSES:
-        return REGISTRY_CLASSES[key]()
+        return REGISTRY_CLASSES[key](heartbeat_timeout=heartbeat_timeout)
     try:
-        return import_from_string(key)()
+        return import_from_string(key)(heartbeat_timeout=heartbeat_timeout)
     except Exception as e:
         raise ImportError(f"Could not import registry class '{key}': {e}")
 
