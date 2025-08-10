@@ -10,8 +10,7 @@ class BackendRegistry:
 
     async def register(self, backend: Backend):
         key = (backend.url, backend.port)
-        if key not in self._backends:
-            self._backends[key] = backend
+        self._backends[key] = backend
         # else: keep the existing object (preserve probe state)
         return {"status": "registered", "backend": self._backends[key].model_dump()}
 

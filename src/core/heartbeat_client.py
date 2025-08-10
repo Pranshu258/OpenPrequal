@@ -3,6 +3,7 @@ import asyncio
 import httpx
 
 from contracts.backend import Backend
+from core import probe_manager
 
 
 class HeartbeatClient:
@@ -26,12 +27,17 @@ class HeartbeatClient:
         async with httpx.AsyncClient() as client:
             while self._running:
                 try:
+                    self.backend.avg_latency = probe_manager.get_avg_latency()
+                    self.backend.windowed_latency = (
+                        probe_manager.get_windowed_avg_latency()
+                    )
+                    self.backend.in_flight_requests = probe_manager.get_in_flight()
                     resp = await client.post(
                         f"{self.proxy_url}/register", json=self.backend.model_dump()
                     )
                     if resp.status_code == 200:
                         print(
-                            f"[Heartbeat] Registered with proxy at {self.proxy_url} as {self.backend.url}"
+                            f"[Heartbeat] Registered with proxy at {self.proxy_url} as {self.backend.url} with {self.backend.model_dump()}"
                         )
                     else:
                         print(f"[Heartbeat] Failed to register with proxy: {resp.text}")

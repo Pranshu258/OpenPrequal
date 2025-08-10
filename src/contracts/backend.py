@@ -7,7 +7,7 @@ class Backend(BaseModel):
     url: str
     port: Optional[int] = None
     health: bool = False
-    in_flight_requests: int = 0
+    in_flight_requests: float = 0.0
     avg_latency: float = 0.0
     windowed_latency: float = 0.0
 
