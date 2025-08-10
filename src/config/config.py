@@ -8,7 +8,16 @@ class Config:
 
     PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
     BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
-    BACKEND_URL = os.environ.get("BACKEND_URL", f"http://localhost:{BACKEND_PORT}")
+    BACKEND_HOST = os.environ.get("BACKEND_HOST")
+    # Prefer BACKEND_URL if set, else construct from BACKEND_HOST and BACKEND_PORT, else default to localhost
+    BACKEND_URL = os.environ.get(
+        "BACKEND_URL",
+        (
+            f"http://{BACKEND_HOST}:{BACKEND_PORT}"
+            if BACKEND_HOST
+            else f"http://localhost:{BACKEND_PORT}"
+        ),
+    )
     HEARTBEAT_SECONDS = int(os.environ.get("BACKEND_HEARTBEAT_SECONDS", "30"))
     HEARTBEAT_TIMEOUT = int(
         os.environ.get("BACKEND_HEARTBEAT_TIMEOUT", str(2 * HEARTBEAT_SECONDS))
