@@ -3,14 +3,21 @@ import asyncio
 import httpx
 
 from contracts.backend import Backend
-from core import probe_manager
+from core.metrics_manager import MetricsManager
 
 
 class HeartbeatClient:
-    def __init__(self, backend: Backend, proxy_url, heartbeat_interval):
+    def __init__(
+        self,
+        backend: Backend,
+        proxy_url,
+        heartbeat_interval,
+        metrics_manager: MetricsManager,
+    ):
         self.backend = backend
         self.proxy_url = proxy_url
         self.heartbeat_interval = heartbeat_interval
+        self.metrics_manager = metrics_manager
         self._task = None
         self._running = False
 
@@ -27,11 +34,13 @@ class HeartbeatClient:
         async with httpx.AsyncClient() as client:
             while self._running:
                 try:
-                    self.backend.avg_latency = probe_manager.get_avg_latency()
+                    self.backend.avg_latency = self.metrics_manager.get_avg_latency()
                     self.backend.windowed_latency = (
-                        probe_manager.get_windowed_avg_latency()
+                        self.metrics_manager.get_windowed_avg_latency()
                     )
-                    self.backend.in_flight_requests = probe_manager.get_in_flight()
+                    self.backend.in_flight_requests = (
+                        self.metrics_manager.get_in_flight()
+                    )
                     resp = await client.post(
                         f"{self.proxy_url}/register", json=self.backend.model_dump()
                     )

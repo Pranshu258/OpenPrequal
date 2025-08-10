@@ -1,5 +1,4 @@
 import asyncio
-import os
 import random
 from contextlib import asynccontextmanager
 
@@ -10,12 +9,10 @@ from config.config import Config
 from contracts.backend import Backend
 from contracts.probe_response import ProbeResponse
 from core.heartbeat_client import HeartbeatClient
-from core.probe_manager import (
-    get_avg_latency,
-    get_in_flight,
-    get_windowed_avg_latency,
-    prometheus_middleware,
-)
+from core.metrics_manager import MetricsManager
+
+# Instantiate metrics manager
+metrics_manager = MetricsManager()
 
 backend = Backend(
     url=Config.BACKEND_URL,
@@ -27,6 +24,7 @@ heartbeat_client = HeartbeatClient(
     backend=backend,
     proxy_url=Config.PROXY_URL,
     heartbeat_interval=Config.HEARTBEAT_SECONDS,
+    metrics_manager=metrics_manager,
 )
 
 
@@ -47,7 +45,7 @@ async def read_root():
     return {"message": f"Hello from backend at {Config.BACKEND_URL}!"}
 
 
-app.middleware("http")(prometheus_middleware)
+app.middleware("http")(metrics_manager.prometheus_middleware)
 
 
 @app.get("/metrics")
@@ -60,7 +58,7 @@ def health_probe():
     print(f"probe requested from {Config.BACKEND_URL}")
     return ProbeResponse(
         status="ok",
-        in_flight_requests=int(get_in_flight()),
-        avg_latency=get_avg_latency(),
-        windowed_latency=get_windowed_avg_latency(),
+        in_flight_requests=int(metrics_manager.get_in_flight()),
+        avg_latency=metrics_manager.get_avg_latency(),
+        windowed_latency=metrics_manager.get_windowed_avg_latency(),
     )
