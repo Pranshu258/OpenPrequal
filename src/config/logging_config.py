@@ -35,4 +35,7 @@ LOGGING_CONFIG = {
 
 
 def setup_logging():
+    """
+    Configure logging for the application using the LOGGING_CONFIG dictionary.
+    """
     logging.config.dictConfig(LOGGING_CONFIG)

@@ -12,7 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsManager:
+    """
+    Manager for collecting and reporting backend metrics such as in-flight requests and latency.
+    """
+
     def __init__(self):
+        """
+        Initialize the MetricsManager and set up Prometheus metrics.
+        """
         self.IN_FLIGHT = Gauge("in_flight_requests", "Number of requests in flight")
         self.REQ_LATENCY = Histogram(
             "request_latency_seconds", "Request latency in seconds"
@@ -22,6 +29,16 @@ class MetricsManager:
         logger.info("MetricsManager initialized.")
 
     async def prometheus_middleware(self, request, call_next):
+        """
+        Middleware for tracking request metrics and updating Prometheus gauges/histograms.
+
+        Args:
+            request: The incoming request object.
+            call_next: The next handler in the middleware chain.
+
+        Returns:
+            The response object from the next handler.
+        """
         start = time.time()
         self.IN_FLIGHT.inc()
         try:
@@ -43,11 +60,23 @@ class MetricsManager:
             )
 
     def get_in_flight(self):
+        """
+        Get the current number of in-flight requests.
+
+        Returns:
+            float: Number of in-flight requests.
+        """
         val = self.IN_FLIGHT._value.get()
         logger.debug(f"Current in-flight requests: {val}")
         return val
 
     def get_avg_latency(self):
+        """
+        Get the average request latency across all time.
+
+        Returns:
+            float: Average latency in seconds.
+        """
         total = 0.0
         count = 0.0
         for metric in self.REQ_LATENCY.collect():
@@ -61,6 +90,12 @@ class MetricsManager:
         return avg
 
     def get_windowed_avg_latency(self):
+        """
+        Get the average request latency over the configured window.
+
+        Returns:
+            float: Windowed average latency in seconds.
+        """
         with self._latency_lock:
             if not self._latency_samples:
                 logger.debug("No latency samples for windowed average.")

@@ -10,12 +10,28 @@ logger = logging.getLogger(__name__)
 
 
 class RoundRobinLoadBalancer(LoadBalancer):
+    """
+    Load balancer that selects backends in a round-robin fashion.
+    """
+
     def __init__(self, registry):
+        """
+        Initialize the RoundRobinLoadBalancer.
+
+        Args:
+            registry: The backend registry instance to use for retrieving backends.
+        """
         self.registry = registry
         self._last_index = 0
         logger.info("RoundRobinLoadBalancer initialized.")
 
     def get_next_backend(self) -> Optional[str]:
+        """
+        Select the next backend to route a request to using round-robin selection.
+
+        Returns:
+            Optional[str]: The URL of the selected backend, or None if no healthy backend is available.
+        """
         # Sort by (url, port) for stable, predictable order
         backends = sorted(
             (b for b in self.registry.list_backends() if b.health),

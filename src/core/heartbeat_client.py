@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 class HeartbeatClient:
+    """
+    Client for sending periodic heartbeat signals to the proxy to register backend health and metrics.
+    """
+
     def __init__(
         self,
         backend: Backend,
@@ -19,6 +23,15 @@ class HeartbeatClient:
         heartbeat_interval,
         metrics_manager: MetricsManager,
     ):
+        """
+        Initialize the HeartbeatClient.
+
+        Args:
+            backend (Backend): The backend instance to report.
+            proxy_url (str): The proxy URL to send heartbeats to.
+            heartbeat_interval (int): Interval in seconds between heartbeats.
+            metrics_manager (MetricsManager): Metrics manager for backend stats.
+        """
         self.backend = backend
         self.proxy_url = proxy_url
         self.heartbeat_interval = heartbeat_interval
@@ -28,17 +41,26 @@ class HeartbeatClient:
         logger.info(f"HeartbeatClient initialized for backend {self.backend.url}")
 
     async def start(self):
+        """
+        Start the heartbeat loop as an asynchronous task.
+        """
         self._running = True
         self._task = asyncio.create_task(self._heartbeat_loop())
         logger.info("Heartbeat loop started.")
 
     async def stop(self):
+        """
+        Stop the heartbeat loop and cancel the running task.
+        """
         self._running = False
         if self._task:
             self._task.cancel()
         logger.info("Heartbeat loop stopped.")
 
     async def _heartbeat_loop(self):
+        """
+        Internal loop that sends heartbeat data to the proxy at regular intervals.
+        """
         async with httpx.AsyncClient() as client:
             while self._running:
                 try:

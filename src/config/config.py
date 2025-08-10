@@ -2,6 +2,10 @@ import os
 
 
 class Config:
+    """
+    Configuration class for environment variables and default settings.
+    """
+
     PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:8000")
     BACKEND_PORT = os.environ.get("BACKEND_PORT", "8001")
     BACKEND_URL = os.environ.get("BACKEND_URL", f"http://localhost:{BACKEND_PORT}")

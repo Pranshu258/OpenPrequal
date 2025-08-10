@@ -12,7 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class ProxyHandler:
+    """
+    Handler for proxying HTTP requests to backend services, with support for custom hooks.
+    """
+
     async def handle_proxy(self, request: Request, path: str, backend_url: str):
+        """
+        Proxy an incoming HTTP request to the specified backend URL, applying custom hooks if configured.
+
+        Args:
+            request (Request): The incoming FastAPI request object.
+            path (str): The path to append to the backend URL.
+            backend_url (str): The URL of the backend service to proxy to.
+
+        Returns:
+            Response: The FastAPI response object from the backend or error response.
+        """
         if not backend_url:
             logger.error("No backend servers registered. Returning 503.")
             return Response(content="No backend servers registered.", status_code=503)
