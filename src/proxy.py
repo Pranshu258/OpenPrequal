@@ -31,12 +31,12 @@ def load_balancer_factory(registry):
 registry = registry_factory()
 
 lb_instance = load_balancer_factory(registry)
-probe_manager = BackendProbeManager(lb_instance)
+probe_manager = BackendProbeManager(registry)
 proxy_handler = ProxyHandler()
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app):
     await probe_manager.start()
     yield
     await probe_manager.stop()

@@ -1,20 +1,24 @@
-import importlib
-from typing import List, Optional, Set
+from typing import List
 
 from src.backend import Backend
 
 
 class BackendRegistry:
     def __init__(self):
-        self.registered_backends: Set[Backend] = set()
+        # Use a dict to ensure canonical Backend objects by (url, port)
+        self._backends = {}
 
     async def register(self, backend: Backend):
-        self.registered_backends.add(backend)
-        return {"status": "registered", "backend": backend.model_dump()}
+        key = (backend.url, backend.port)
+        if key not in self._backends:
+            self._backends[key] = backend
+        # else: keep the existing object (preserve probe state)
+        return {"status": "registered", "backend": self._backends[key].model_dump()}
 
     async def unregister(self, backend: Backend):
-        self.registered_backends.discard(backend)
+        key = (backend.url, backend.port)
+        self._backends.pop(key, None)
         return {"status": "unregistered", "backend": backend.model_dump()}
 
     def list_backends(self) -> List[Backend]:
-        return [b for b in self.registered_backends]
+        return list(self._backends.values())

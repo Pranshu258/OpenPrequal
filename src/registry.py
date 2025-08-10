@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from src.backend import Backend
+
 
 class Registry(ABC):
     @abstractmethod
@@ -18,7 +20,7 @@ class Registry(ABC):
         pass
 
     @abstractmethod
-    def list_backends(self) -> List[dict]:
+    def list_backends(self) -> List[Backend]:
         """
         Return a list of all registered backends and their metadata.
         """

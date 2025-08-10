@@ -7,9 +7,6 @@ from src.config import Config
 
 
 class ProxyHandler:
-    def __init__(self, load_balancer):
-        self.load_balancer = load_balancer
-
     async def handle_proxy(self, request: Request, path: str, backend_url: str):
         if not backend_url:
             return Response(content="No backend servers registered.", status_code=503)

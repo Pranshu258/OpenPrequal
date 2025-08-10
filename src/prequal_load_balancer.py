@@ -7,7 +7,7 @@ from src.registry import Registry
 
 
 class PrequalLoadBalancer(LoadBalancer):
-    def __init__(self, registry: Registry):
+    def __init__(self, registry):
         self.registry = registry
 
     def get_next_backend(self) -> Optional[str]:
