@@ -1,3 +1,12 @@
+docker build -f k8s/openprequal/docker/Dockerfile.proxy -t pranshug258/openprequal-proxy:latest .
+docker build -f k8s/openprequal/docker/Dockerfile.server -t pranshug258/openprequal-server:latest .
+
+docker push pranshug258/openprequal-proxy:latest
+docker push pranshug258/openprequal-server:latest
+
+docker stop openprequal-proxy openprequal-server1 openprequal-server2
+docker rm openprequal-proxy openprequal-server1 openprequal-server2
+
 # Use a user-defined Docker network for inter-container communication
 NETWORK=openprequal-net
 # Create the network if it doesn't exist
