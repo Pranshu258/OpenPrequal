@@ -1,10 +1,8 @@
 import importlib
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 
 from src.backend import Backend
-from src.backend_probe_manager import BackendProbeManager
 from src.config import Config
 from src.proxy_handler import ProxyHandler
 
@@ -29,20 +27,10 @@ def load_balancer_factory(registry):
 
 
 registry = registry_factory()
-
 lb_instance = load_balancer_factory(registry)
-probe_manager = BackendProbeManager(registry)
 proxy_handler = ProxyHandler()
 
-
-@asynccontextmanager
-async def lifespan(app):
-    await probe_manager.start()
-    yield
-    await probe_manager.stop()
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 @app.post("/register")
