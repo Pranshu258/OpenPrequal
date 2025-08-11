@@ -1,24 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openprequal-backend
+  name: openprequal-server
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
     matchLabels:
-      app: openprequal-backend
+      app: openprequal-server
   template:
     metadata:
       labels:
-        app: openprequal-backend
+        app: openprequal-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: backend
         image: {{ .Values.backend.image }}
         ports:
-        - containerPort: 8001
+        - containerPort: 8000
         env:
-        {{- range $key, $value := .Values.backend.env }}
-        - name: {{ $key }}
-          value: "{{ $value }}"
-        {{- end }}
+{{- range $key, $value := .Values.backend.env }}
+          - name: {{ $key }}
+            value: "{{ $value }}"
+{{- end }}
+          - name: BACKEND_HOST
+            value: openprequal-server

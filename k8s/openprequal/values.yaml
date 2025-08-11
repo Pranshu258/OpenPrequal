@@ -1,5 +1,5 @@
 proxy:
-  image: "<your-docker-username>/openprequal-proxy:latest"
+  image: "pranshug258/openprequal-proxy:latest"
   replicaCount: 1
   service:
     type: LoadBalancer
@@ -7,11 +7,13 @@ proxy:
   env:
     LOAD_BALANCER_CLASS: "src.prequal_load_balancer.PrequalLoadBalancer"
 backend:
-  image: "<your-docker-username>/openprequal-backend:latest"
+  image: "pranshug258/openprequal-server:latest"
+  # Set this to any number for dynamic scaling
   replicaCount: 2
   service:
     type: ClusterIP
-    port: 8001
+    port: 8000
   env:
     PROXY_URL: "http://openprequal-proxy:8000"
-    BACKEND_PORT: "8001"
+    BACKEND_PORT: "8000"
+    # BACKEND_HOST is set dynamically from pod name in the deployment
