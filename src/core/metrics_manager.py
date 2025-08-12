@@ -1,10 +1,12 @@
 import logging
 import threading
 import time
+from bisect import bisect_left
+from collections import defaultdict, deque
+from statistics import median
 
 from prometheus_client import Gauge, Histogram
 
-from config.config import Config
 from config.logging_config import setup_logging
 
 setup_logging()
@@ -16,17 +18,41 @@ class MetricsManager:
     Manager for collecting and reporting backend metrics such as in-flight requests and latency.
     """
 
-    def __init__(self):
+    def __init__(self, rif_bins: list[int] | None = None):
         """
         Initialize the MetricsManager and set up Prometheus metrics.
+
+        Args:
+            rif_bins: Optional list of increasing integer RIF upper-bounds to bin
+                samples by. If provided, latencies are recorded under the bin whose
+                upper-bound is the first value >= the observed RIF. If None, the
+                exact RIF values are used (previous behavior).
         """
         self.IN_FLIGHT = Gauge("in_flight_requests", "Number of requests in flight")
         self.REQ_LATENCY = Histogram(
             "request_latency_seconds", "Request latency in seconds"
         )
-        self._latency_samples = []  # Each entry: (timestamp, latency)
+        # Map of RIF (Requests In-Flight) -> deque of recent latencies (max 1000)
+        self._rif_latencies = defaultdict(lambda: deque(maxlen=1000))
         self._latency_lock = threading.Lock()
+        # Optional bin configuration (sorted, unique)
+        self._rif_bins = (
+            sorted(set(rif_bins))
+            if rif_bins is not None and len(rif_bins) > 0
+            else None
+        )
         logger.info("MetricsManager initialized.")
+
+    # Helper: map an observed RIF to a storage key (either exact RIF or bin upper-bound)
+    def _get_rif_key(self, rif: int) -> int:
+        if not self._rif_bins:
+            return rif
+        # Choose the first bin upper-bound that is >= rif; if larger than any bin,
+        # clamp to the largest bin.
+        idx = bisect_left(self._rif_bins, rif)
+        if idx >= len(self._rif_bins):
+            return self._rif_bins[-1]
+        return self._rif_bins[idx]
 
     async def prometheus_middleware(self, request, call_next):
         """
@@ -41,6 +67,8 @@ class MetricsManager:
         """
         start = time.time()
         self.IN_FLIGHT.inc()
+        # Capture RIF at start (after increment) to attribute latency to this load level
+        rif_at_start = int(self.get_in_flight())
         try:
             response = await call_next(request)
             return response
@@ -48,13 +76,10 @@ class MetricsManager:
             elapsed = time.time() - start
             self.IN_FLIGHT.dec()
             self.REQ_LATENCY.observe(elapsed)
-            now = time.time()
+            # Store latency under the RIF observed at request start
             with self._latency_lock:
-                self._latency_samples.append((now, elapsed))
-                # Remove samples older than window
-                cutoff = now - Config.LATENCY_WINDOW_SECONDS
-                while self._latency_samples and self._latency_samples[0][0] < cutoff:
-                    self._latency_samples.pop(0)
+                key = self._get_rif_key(rif_at_start)
+                self._rif_latencies[key].append(elapsed)
             logger.debug(
                 f"Request processed in {elapsed:.4f}s. In-flight: {self.get_in_flight()}"
             )
@@ -72,36 +97,73 @@ class MetricsManager:
 
     def get_avg_latency(self):
         """
-        Get the average request latency across all time.
+        Get the median request latency for the current RIF (requests in-flight) value.
 
         Returns:
-            float: Average latency in seconds.
+            float: Median latency in seconds for the current RIF, or 0.0 if none.
         """
-        total = 0.0
-        count = 0.0
-        for metric in self.REQ_LATENCY.collect():
-            for sample in metric.samples:
-                if sample.name.endswith("_sum"):
-                    total = sample.value
-                if sample.name.endswith("_count"):
-                    count = sample.value
-        avg = (total / count) if count else 0.0
-        logger.debug(f"Average latency: {avg:.4f}s")
-        return avg
-
-    def get_windowed_avg_latency(self):
-        """
-        Get the average request latency over the configured window.
-
-        Returns:
-            float: Windowed average latency in seconds.
-        """
+        current_rif = int(self.get_in_flight())
         with self._latency_lock:
-            if not self._latency_samples:
-                logger.debug("No latency samples for windowed average.")
+            # Exact samples for current RIF (or its bin key, if binning enabled)
+            key = self._get_rif_key(current_rif)
+            samples = list(self._rif_latencies.get(key, ()))
+            if samples:
+                med = float(median(samples))
+                logger.debug(
+                    f"Median latency for RIF={current_rif} (key={key}): {med:.4f}s (exact)"
+                )
+                return med
+
+            # Build a sorted list of RIFs that have samples
+            rif_keys = sorted(k for k, v in self._rif_latencies.items() if len(v) > 0)
+
+            if not rif_keys:
+                logger.debug("No latency samples recorded yet; returning 0.0")
                 return 0.0
-            avg = sum(lat for _, lat in self._latency_samples) / len(
-                self._latency_samples
-            )
-            logger.debug(f"Windowed average latency: {avg:.4f}s")
-            return avg
+
+            # Find nearest lower and higher RIF keys
+            idx = bisect_left(rif_keys, key)
+            lower_key = rif_keys[idx - 1] if idx > 0 else None
+            higher_key = rif_keys[idx] if idx < len(rif_keys) else None
+
+            # If only one neighbor exists, use its median
+            if lower_key is not None and higher_key is None:
+                med_lower = float(median(self._rif_latencies[lower_key]))
+                logger.debug(
+                    f"No exact samples for RIF={current_rif}; using lower RIF={lower_key} median {med_lower:.4f}s"
+                )
+                return med_lower
+
+            if higher_key is not None and lower_key is None:
+                med_higher = float(median(self._rif_latencies[higher_key]))
+                logger.debug(
+                    f"No exact samples for RIF={current_rif}; using higher RIF={higher_key} median {med_higher:.4f}s"
+                )
+                return med_higher
+
+            # If both neighbors exist, interpolate between their medians
+            if lower_key is not None and higher_key is not None:
+                med_lower = float(median(self._rif_latencies[lower_key]))
+                med_higher = float(median(self._rif_latencies[higher_key]))
+
+                if higher_key == lower_key:
+                    # Degenerate case (shouldn't happen with distinct keys), return either
+                    logger.debug(
+                        f"Degenerate neighbor case for RIF={current_rif}; returning median {med_lower:.4f}s"
+                    )
+                    return med_lower
+
+                # Linear interpolation based on distance between RIF levels
+                t = (key - lower_key) / (higher_key - lower_key)
+                estimate = med_lower + t * (med_higher - med_lower)
+                logger.debug(
+                    (
+                        f"Estimated median latency for RIF={current_rif} (key={key}) by interpolating "
+                        f"lower RIF={lower_key} ({med_lower:.4f}s) and higher RIF={higher_key} ({med_higher:.4f}s): "
+                        f"{estimate:.4f}s"
+                    )
+                )
+                return float(estimate)
+
+        # As a final fallback
+        return 0.0
