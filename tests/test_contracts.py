@@ -12,14 +12,12 @@ class TestBackendContract(unittest.TestCase):
             health=True,
             in_flight_requests=2,
             avg_latency=3,
-            windowed_latency=4,
         )
         self.assertEqual(b.url, "u")
         self.assertEqual(b.port, 1)
         self.assertTrue(b.health)
         self.assertEqual(b.in_flight_requests, 2)
         self.assertEqual(b.avg_latency, 3)
-        self.assertEqual(b.windowed_latency, 4)
 
     def test_backend_equality_and_hash(self):
         b1 = Backend(url="u", port=1)
@@ -43,13 +41,10 @@ class TestBackendContract(unittest.TestCase):
 
 class TestProbeResponseContract(unittest.TestCase):
     def test_probe_response_fields(self):
-        p = ProbeResponse(
-            status="ok", in_flight_requests=1, avg_latency=2.0, windowed_latency=3.0
-        )
+        p = ProbeResponse(status="ok", in_flight_requests=1, avg_latency=2.0)
         self.assertEqual(p.status, "ok")
         self.assertEqual(p.in_flight_requests, 1)
         self.assertEqual(p.avg_latency, 2.0)
-        self.assertEqual(p.windowed_latency, 3.0)
 
     def test_probe_response_validation(self):
         # status is required

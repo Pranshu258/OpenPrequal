@@ -47,7 +47,6 @@ class TestHeartbeatClient(unittest.TestCase):
         backend = Backend(url="u", port=1, health=True)
         metrics = MagicMock()
         metrics.get_avg_latency.return_value = 1.0
-        metrics.get_windowed_avg_latency.return_value = 1.0
         metrics.get_in_flight.return_value = 1.0
         client_instance = mock_client.return_value.__aenter__.return_value
         client_instance.post = AsyncMock(
@@ -59,9 +58,6 @@ class TestHeartbeatClient(unittest.TestCase):
             async with mock_client():
                 # Simulate one iteration of the heartbeat loop
                 hb.backend.avg_latency = hb.metrics_manager.get_avg_latency()
-                hb.backend.windowed_latency = (
-                    hb.metrics_manager.get_windowed_avg_latency()
-                )
                 hb.backend.in_flight_requests = hb.metrics_manager.get_in_flight()
                 await client_instance.post(
                     f"{hb.proxy_url}/register", json=hb.backend.model_dump()
@@ -99,11 +95,8 @@ class TestMetricsManager(unittest.TestCase):
         # Simulate a request
         mm.IN_FLIGHT.inc()
         mm.IN_FLIGHT.dec()
-        # Patch _latency_samples for windowed avg
-        mm._latency_samples = [(0, 1.0), (1, 2.0)]
         self.assertIsInstance(mm.get_in_flight(), float)
         self.assertIsInstance(mm.get_avg_latency(), float)
-        self.assertIsInstance(mm.get_windowed_avg_latency(), float)
 
 
 class TestProxyHandler(unittest.IsolatedAsyncioTestCase):

@@ -67,7 +67,6 @@ def health_probe():
         status="ok",
         in_flight_requests=int(metrics_manager.get_in_flight()),
         avg_latency=metrics_manager.get_avg_latency(),
-        windowed_latency=metrics_manager.get_windowed_avg_latency(),
     )
 
 

@@ -38,15 +38,12 @@ class PrequalLoadBalancer(LoadBalancer):
         if not healthy_backends:
             logger.warning("No healthy backends available for prequal load balancer.")
             return None
-        # Lexicographic ordering: (windowed_latency, in_flight_requests, avg_latency)
-        min_tuple = min(
-            (b.windowed_latency, b.in_flight_requests, b.avg_latency)
-            for b in healthy_backends
-        )
+        # Lexicographic ordering: (in_flight_requests, avg_latency)
+        min_tuple = min((b.in_flight_requests, b.avg_latency) for b in healthy_backends)
         candidates = [
             b
             for b in healthy_backends
-            if (b.windowed_latency, b.in_flight_requests, b.avg_latency) == min_tuple
+            if (b.in_flight_requests, b.avg_latency) == min_tuple
         ]
         logger.debug(f"Healthy backends: {healthy_backends}")
         selected = random.choice(candidates)
