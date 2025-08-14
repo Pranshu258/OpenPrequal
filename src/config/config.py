@@ -27,7 +27,7 @@ class Config:
     )  # 5 minutes
 
     # Allow health check path to be set for any API service
-    BACKEND_HEALTH_PATH = os.environ.get("BACKEND_HEALTH_PATH", "/healthz")
+    BACKEND_HEALTH_PATH = os.environ.get("BACKEND_HEALTH_PATH", "/probe")
 
     # Optional: allow custom hooks for registration, path rewrite, request/response
     CUSTOM_REGISTER_HOOK = os.environ.get("CUSTOM_REGISTER_HOOK")

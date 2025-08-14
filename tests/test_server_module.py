@@ -20,7 +20,7 @@ class TestServerModule(unittest.TestCase):
         self.assertIn("text/plain", response.headers["content-type"])
 
     def test_healthz_endpoint(self):
-        response = self.client.get("/healthz")
+        response = self.client.get("/probe")
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("status", data)

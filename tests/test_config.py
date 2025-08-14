@@ -14,7 +14,7 @@ class TestConfig(unittest.TestCase):
         self.assertIsInstance(Config.HEARTBEAT_SECONDS, int)
         self.assertIsInstance(Config.HEARTBEAT_TIMEOUT, int)
         self.assertIsInstance(Config.LATENCY_WINDOW_SECONDS, int)
-        self.assertEqual(Config.BACKEND_HEALTH_PATH, "/healthz")
+        self.assertEqual(Config.BACKEND_HEALTH_PATH, "/probe")
 
     def test_config_env_override(self):
         os.environ["PROXY_URL"] = "http://test:1234"

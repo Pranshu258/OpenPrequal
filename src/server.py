@@ -60,7 +60,7 @@ def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.get("/healthz", response_model=ProbeResponse)
+@app.get("/probe", response_model=ProbeResponse)
 def health_probe():
     logger.info(f"probe requested from {Config.BACKEND_URL}")
     return ProbeResponse(

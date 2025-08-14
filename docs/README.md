@@ -32,7 +32,7 @@ It features dynamic backend registration, health checks, pluggable load balancin
 
 ## Features
 - **Dynamic Backend Registration:** Backends can register/unregister automatically via heartbeat or manually via API, allowing seamless scaling and failover.
-- **Health Checks:** The proxy tracks backend health using heartbeat timeouts and `/healthz` endpoint, ensuring requests are only sent to healthy replicas.
+- **Health Checks:** The proxy tracks backend health using heartbeat timeouts and `/probe` endpoint, ensuring requests are only sent to healthy replicas.
 - **Pluggable Load Balancer:** Easily switch between Prequal (default), round robin, or custom strategies via config/env. Prequal uses real-time RIF (requests-in-flight) and latency for optimal routing.
 - **Generic Proxy:** Proxies any HTTP method and path to registered backends, supporting REST, GraphQL, and custom APIs.
 - **Customizable Hooks:** Add custom registration logic, path rewriting, or request/response processing via Python hooks for advanced use cases.
@@ -194,7 +194,7 @@ export LOAD_BALANCER_CLASS=algorithms.round_robin_load_balancer.RoundRobinLoadBa
 - `BACKEND_HEARTBEAT_SECONDS`: Heartbeat interval in seconds (default: `30`)
 - `BACKEND_HEARTBEAT_TIMEOUT`: Heartbeat timeout in seconds (default: `2 * HEARTBEAT_SECONDS`)
 - `LATENCY_WINDOW_SECONDS`: Window for average latency metrics (default: `300`)
-- `BACKEND_HEALTH_PATH`: Path for health checks (default: `/healthz`)
+- `BACKEND_HEALTH_PATH`: Path for health checks (default: `/probe`)
 - `LOAD_BALANCER_CLASS`: Python path to the load balancer class (default: `algorithms.prequal_load_balancer.PrequalLoadBalancer`)
 - `REGISTRY_CLASS`: Python path to the registry class (default: `core.backend_registry.BackendRegistry`)
 - `CUSTOM_REGISTER_HOOK`, `CUSTOM_UNREGISTER_HOOK`, `CUSTOM_PATH_REWRITE`, `CUSTOM_REQUEST_HOOK`, `CUSTOM_RESPONSE_HOOK`: Python paths to custom hook functions (optional)
