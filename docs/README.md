@@ -174,6 +174,30 @@ The Probe Manager periodically sends GET requests to `/probe` on all backends. E
 - **Task Queue:** Ensures probe requests are distributed and not repeated for the same backend until all have been probed (random selection without replacement). This avoids probe storms and balances monitoring load.
 - **Prequal Load Balancer:** Classifies backends as hot/cold based on RIF values, chooses the cold backend with lowest latency, and schedules probe tasks for two randomly selected backends after each request. This approach minimizes latency and prevents overloading any single backend.
 
+
+### Probe Concurrency & Monitoring
+
+OpenPrequal’s probe manager supports:
+
+- **Configurable Probe Concurrency:** The number of concurrent probes is limited (default: 5, configurable in code), preventing probe storms and reducing backend load.
+- **Queue & Latency Monitoring:** The probe manager logs the probe task queue size and probe latencies, making it easy to monitor system health and performance.
+
+**How it works:**
+- Probe tasks are processed asynchronously, off the main request path, so health checks never block client requests.
+- The probe manager uses an asyncio semaphore to restrict the number of simultaneous probes.
+- Each probe’s latency and the current queue size are logged for observability.
+
+**Configuration:**
+To change the concurrency limit, set `max_concurrent_probes` when initializing `ProbeManager` in your code (see `src/core/probe_manager.py`).
+
+**Example:**
+```python
+probe_manager = ProbeManager(probe_pool, probe_task_queue, max_concurrent_probes=10)
+```
+
+**Monitoring:**
+Probe queue size and probe latencies are logged automatically. Use these logs to track system health and tune performance.
+
 Backends register automatically with the proxy via periodic heartbeats, or can be registered manually. The proxy tracks backend health using heartbeat timeouts and a health check endpoint, and load balances requests to healthy backends. If a backend fails to respond to heartbeats or health checks, it is automatically removed from the routing pool until it recovers.
 
 ## Configuration
