@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, Type
 
+import httpx
 from fastapi import FastAPI, Request
 
 from algorithms.prequal_load_balancer import PrequalLoadBalancer
@@ -73,7 +74,8 @@ probe_manager = ProbeManager(probe_pool, probe_task_queue)
 # Initialize registry and load balancer
 registry = registry_factory()
 lb_instance = load_balancer_factory(registry)
-proxy_handler = ProxyHandler()
+client = httpx.AsyncClient()
+proxy_handler = ProxyHandler(client)
 
 
 @asynccontextmanager
@@ -81,6 +83,7 @@ async def lifespan(app):
     task = asyncio.create_task(probe_manager.run())
     yield
     task.cancel()
+    await client.aclose()
 
 
 app = FastAPI(lifespan=lifespan)

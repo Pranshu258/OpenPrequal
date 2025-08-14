@@ -16,6 +16,9 @@ class ProxyHandler:
     Handler for proxying HTTP requests to backend services, with support for custom hooks.
     """
 
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
+
     async def handle_proxy(self, request: Request, path: str, backend_url: str):
         """
         Proxy an incoming HTTP request to the specified backend URL, applying custom hooks if configured.
@@ -52,20 +55,19 @@ class ProxyHandler:
             await getattr(module, func_name)(request, url, headers, body)
             logger.debug("Custom request hook executed.")
 
-        async with httpx.AsyncClient() as client:
-            try:
-                resp = await client.request(
-                    method,
-                    url,
-                    headers=headers,
-                    content=body,
-                    params=request.query_params,
-                    timeout=10.0,
-                )
-                logger.info(f"Received response from backend: {resp.status_code}")
-            except httpx.RequestError as e:
-                logger.error(f"Upstream error: {e}")
-                return Response(content=f"Upstream error: {e}", status_code=502)
+        try:
+            resp = await self.client.request(
+                method,
+                url,
+                headers=headers,
+                content=body,
+                params=request.query_params,
+                timeout=10.0,
+            )
+            logger.info(f"Received response from backend: {resp.status_code}")
+        except httpx.RequestError as e:
+            logger.error(f"Upstream error: {e}")
+            return Response(content=f"Upstream error: {e}", status_code=502)
 
         custom_response_hook = getattr(Config, "CUSTOM_RESPONSE_HOOK", None)
         if custom_response_hook:

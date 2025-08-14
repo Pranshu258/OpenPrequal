@@ -35,6 +35,7 @@ It features dynamic backend registration, health checks, pluggable load balancin
 - **Health Checks:** The proxy tracks backend health using heartbeat timeouts and `/probe` endpoint, ensuring requests are only sent to healthy replicas.
 - **Pluggable Load Balancer:** Easily switch between Prequal (default), round robin, or custom strategies via config/env. Prequal uses real-time RIF (requests-in-flight) and latency for optimal routing.
 - **Generic Proxy:** Proxies any HTTP method and path to registered backends, supporting REST, GraphQL, and custom APIs.
+- **Connection Reuse (Keep-Alive):** The proxy uses persistent connections to backend servers, reusing connections for multiple requests to improve performance and reduce latency. This is achieved via a shared HTTP client with connection pooling. This avoids creating a new connection for every request, improving efficiency and scalability.
 - **Customizable Hooks:** Add custom registration logic, path rewriting, or request/response processing via Python hooks for advanced use cases.
 - **Prometheus Metrics:** Built-in `/metrics` endpoint exposes detailed stats for both proxy and backend, ready for Prometheus/Grafana integration.
 - **Docker & Kubernetes Ready:** Includes Dockerfiles, scripts, and Helm chart for easy deployment and scaling in cloud-native environments.
@@ -238,6 +239,9 @@ Start the API gateway on port 8000:
 ```bash
 PYTHONPATH=src uvicorn proxy:app --port 8000
 ```
+
+The proxy will automatically reuse connections to backend servers for all proxied requests, thanks to its persistent HTTP client. This reduces connection overhead and improves throughput, especially under high load.
+
 You should see Uvicorn startup logs and the proxy listening on port 8000.
 
 ### Start a Backend Example
