@@ -55,6 +55,9 @@ def load_balancer_factory(registry):
     key = getattr(Config, "LOAD_BALANCER_CLASS", "default")
     if key in LB_CLASSES:
         logger.info(f"Using built-in load balancer class: {key}")
+        if key == "default":
+            # PrequalLoadBalancer needs probe_pool and probe_task_queue
+            return LB_CLASSES[key](registry, probe_pool, probe_task_queue)
         return LB_CLASSES[key](registry)
     try:
         logger.info(f"Importing load balancer class from string: {key}")
@@ -105,6 +108,6 @@ async def unregister_backend(data: Backend):
     "/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 )
 async def proxy(request: Request, path: str):
-    backend_url = lb_instance.get_next_backend()
+    backend_url = await lb_instance.get_next_backend()
     logger.info(f"Routing request for path '{path}' to backend: {backend_url}")
     return await proxy_handler.handle_proxy(request, path, backend_url)
