@@ -22,9 +22,9 @@ class PrequalLoadBalancer(LoadBalancer):
     def __init__(
         self, registry, probe_pool: ProbePool, probe_task_queue: ProbeTaskQueue
     ):
-        self.registry = registry
-        self.probe_pool = probe_pool
-        self.probe_task_queue = probe_task_queue
+        self._registry = registry
+        self._probe_pool = probe_pool
+        self._probe_task_queue = probe_task_queue
         self._probe_history = set()
         logger.info("PrequalLoadBalancer initialized.")
 
@@ -33,7 +33,7 @@ class PrequalLoadBalancer(LoadBalancer):
         cold, hot = [], []
         for backend in backends:
             backend_id = backend.url
-            rifs = self.probe_pool.get_rif_values(backend_id)
+            rifs = self._probe_pool.get_rif_values(backend_id)
             if not rifs:
                 cold.append(backend)
                 continue
@@ -49,12 +49,13 @@ class PrequalLoadBalancer(LoadBalancer):
         """Select backend from cold (lowest latency) or hot (lowest current rif)."""
         if cold:
             min_latency = min(
-                self.probe_pool.get_current_latency(b.url) or float("inf") for b in cold
+                self._probe_pool.get_current_latency(b.url) or float("inf")
+                for b in cold
             )
             candidates = [
                 b
                 for b in cold
-                if (self.probe_pool.get_current_latency(b.url) or float("inf"))
+                if (self._probe_pool.get_current_latency(b.url) or float("inf"))
                 == min_latency
             ]
             selected = random.choice(candidates)
@@ -62,8 +63,8 @@ class PrequalLoadBalancer(LoadBalancer):
         else:
             min_rif = min(
                 (
-                    self.probe_pool.get_rif_values(b.url)[-1]
-                    if self.probe_pool.get_rif_values(b.url)
+                    self._probe_pool.get_rif_values(b.url)[-1]
+                    if self._probe_pool.get_rif_values(b.url)
                     else float("inf")
                 )
                 for b in hot
@@ -72,8 +73,8 @@ class PrequalLoadBalancer(LoadBalancer):
                 b
                 for b in hot
                 if (
-                    self.probe_pool.get_rif_values(b.url)[-1]
-                    if self.probe_pool.get_rif_values(b.url)
+                    self._probe_pool.get_rif_values(b.url)[-1]
+                    if self._probe_pool.get_rif_values(b.url)
                     else float("inf")
                 )
                 == min_rif
@@ -92,7 +93,7 @@ class PrequalLoadBalancer(LoadBalancer):
             available = list(backend_ids)
         probe_targets = random.sample(available, min(2, len(available)))
         for backend_id in probe_targets:
-            await self.probe_task_queue.add_task(backend_id)
+            await self._probe_task_queue.add_task(backend_id)
             self._probe_history.add(backend_id)
 
     async def get_next_backend(self) -> Optional[str]:
@@ -100,7 +101,7 @@ class PrequalLoadBalancer(LoadBalancer):
         Select the next backend to route a request to, based on probe pool hot/cold classification and latency/rif.
         Also schedules probe tasks for two randomly selected backends.
         """
-        healthy_backends = [b for b in self.registry.list_backends() if b.health]
+        healthy_backends = [b for b in self._registry.list_backends() if b.health]
         if not healthy_backends:
             logger.warning("No healthy backends available for prequal load balancer.")
             return None
