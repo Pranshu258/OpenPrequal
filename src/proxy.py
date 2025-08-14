@@ -1,5 +1,7 @@
+import asyncio
 import importlib
 import logging
+from contextlib import asynccontextmanager
 from typing import Any, Type
 
 from fastapi import FastAPI, Request
@@ -9,6 +11,9 @@ from config.config import Config
 from config.logging_config import setup_logging
 from contracts.backend import Backend
 from core.backend_registry import BackendRegistry
+from core.probe_manager import ProbeManager
+from core.probe_pool import ProbePool
+from core.probe_task_queue import ProbeTaskQueue
 from core.proxy_handler import ProxyHandler
 
 setup_logging()
@@ -58,11 +63,27 @@ def load_balancer_factory(registry):
         raise ImportError(f"Could not import load balancer class '{key}': {e}")
 
 
+# Initialize probe pool and task queue
+probe_pool = ProbePool()
+probe_task_queue = ProbeTaskQueue()
+
+# Initialize probe manager
+probe_manager = ProbeManager(probe_pool, probe_task_queue)
+
+# Initialize registry and load balancer
 registry = registry_factory()
 lb_instance = load_balancer_factory(registry)
 proxy_handler = ProxyHandler()
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(probe_manager.run())
+    yield
+    task.cancel()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/register")

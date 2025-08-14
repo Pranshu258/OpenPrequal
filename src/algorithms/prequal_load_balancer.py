@@ -7,6 +7,7 @@ from abstractions.load_balancer import LoadBalancer
 from config.logging_config import setup_logging
 from contracts.backend import Backend
 from core.probe_pool import ProbePool
+from core.probe_task_queue import ProbeTaskQueue
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -18,19 +19,23 @@ class PrequalLoadBalancer(LoadBalancer):
     If multiple candidates are tied, one is chosen at random.
     """
 
-    def __init__(self, registry, probe_pool: ProbePool):
+    def __init__(
+        self, registry, probe_pool: ProbePool, probe_task_queue: ProbeTaskQueue
+    ):
         """
         Initialize the PrequalLoadBalancer.
 
         Args:
             registry: The backend registry instance to use for retrieving backends.
             probe_pool: The ProbePool instance to use for probe data.
+            probe_task_queue: The ProbeTaskQueue instance for probe tasks.
         """
         self.registry = registry
         self.probe_pool = probe_pool
+        self.probe_task_queue = probe_task_queue
         logger.info("PrequalLoadBalancer initialized.")
 
-    def get_next_backend(self) -> Optional[str]:
+    async def get_next_backend(self) -> Optional[str]:
         """
         Select the next backend to route a request to, based on probe pool hot/cold classification and latency/rif.
 
@@ -71,7 +76,6 @@ class PrequalLoadBalancer(LoadBalancer):
             ]
             selected = random.choice(candidates)
             logger.info(f"Selected cold backend (lowest latency): {selected.url}")
-            return selected.url
         else:
             # Choose hot backend with lowest current rif
             min_rif = min(
@@ -94,4 +98,21 @@ class PrequalLoadBalancer(LoadBalancer):
             ]
             selected = random.choice(candidates)
             logger.info(f"Selected hot backend (lowest current rif): {selected.url}")
-            return selected.url
+
+        # Enqueue probe tasks for two randomly selected backends (without replacement)
+        # Track probe selection history for 'without replacement' across requests
+        if not hasattr(self, "_probe_history"):
+            self._probe_history = set()
+        backend_ids = set(b.url for b in healthy_backends)
+        # Remove any history for backends that are no longer healthy
+        self._probe_history &= backend_ids
+        available = list(backend_ids - self._probe_history)
+        if len(available) < 2:
+            # If fewer than 2 left, reset history and select from all
+            self._probe_history = set()
+            available = list(backend_ids)
+        probe_targets = random.sample(available, min(2, len(available)))
+        for backend_id in probe_targets:
+            await self.probe_task_queue.add_task(backend_id)
+            self._probe_history.add(backend_id)
+        return selected.url
