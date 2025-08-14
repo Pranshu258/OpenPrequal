@@ -5,23 +5,122 @@ OpenPrequal is a reusable, production-ready API gateway and load balancer for an
 ---
 
 ## Architecture
+```
+                  ┌────────────────────────────────────────────┐
+                  │                  CLIENT                    │
+                  └──────────────────────┬─────────────────────┘
+                                         |
+                                         │  HTTP Request (/proxy)
+                                         |
+                                         ▼
+                      ┌────────────────────────────────────┐
+                      │   OPENPREQUAL PROXY (Origin Pod)   │
+                      │────────────────────────────────────│
+                      │ 1. Replica Selector                │
+                      │    - Reads RIF & latency from      │
+                      │      probe pool data.              │
+                      │                                    │
+                      │ 2. Proxy Handler                   │
+                      │    - Forwards to best replica      │
+                      │                                    │
+                      │ 3. Probe Manager                   │
+                      │    - Periodically calls probe      │
+                      │      on all replicas               │
+                      │                                    │
+                      │ 4. Metrics Endpoint (/metrics)     │
+                      │    - Prometheus stats              │
+                      └────────────────────────────────────┘
+                                        ▲
+                                        |
+                                        |
+                                        │ background probes (/probe)
+                                        |
+                                        |
+                  ------------------------------------------------
+                  |                                              |
+                  |                                              |
+                  |                                              |
+                  ▼                                              ▼
+       ┌────────────────────────┐                    ┌────────────────────────┐
+       │     REPLICA POD A      │                    │      REPLICA POD B     │
+       │────────────────────────│                    │────────────────────────│
+       │ App Server (/handle)   │                    │ App Server (/handle)   │
+       │ RIF Middleware         │                    │ RIF Middleware         │
+       │   - increment before   │                    │   - increment before   │
+       │     processing request │                    │     processing request │
+       │   - decrement after    │                    │   - decrement after    │
+       │     sending response   │                    │     sending response   │
+       │ /probe endpoint        │                    │ /probe endpoint        │
+       │   - returns RIF        │                    │   - returns RIF        │
+       └────────────────────────┘                    └────────────────────────┘
+```
+---
 
+## Workflow 
+- Step 1: Client sends request
 ```
-                ┌──────────────┐
-                │   Client     │
-                └──────┬───────┘
-                       │ HTTP Request
-                ┌──────▼───────┐
-                │   Proxy      │
-                │ (API Gateway │
-                │  & LB)       │
-                └──────-┬──────┘
-         ┌──────────────┼──────────────┐
-         │              │              │
- ┌───────▼──────┐ ┌─────▼──────┐ ┌────-▼──────┐
- │  Backend 1   │ │ Backend 2  │ │ Backend N  │
- └──────────────┘ └────────────┘ └────────────┘
+       CLIENT
+       │
+       │  HTTP Request (/proxy)
+       ▼
+       Prequal Sidecar (Origin Pod)
 ```
+
+- Step 2: Sidecar chooses best replica
+```
+       [Replica Selector]
+       │ Reads RIF + latency data from Probe Manager
+       │ Picks replica with lowest (RIF, latency) in HCL order
+       ▼
+       [Proxy Handler]
+       │
+       │  Forward request to chosen replica's /handle endpoint
+       ▼
+```
+
+- Step 3: Replica processes request
+```
+       Replica Pod (e.g., Replica A)
+       │
+       ├─> RIF Middleware
+       │     - Increment RIF counter
+       │     - Pass request to app handler
+       │
+       ├─> Application handler processes request
+       │
+       ├─> Send response back to sidecar
+       │
+       └─> RIF Middleware
+              - Decrement RIF counter
+```
+
+- Step 4: Sidecar returns result to client
+```
+       Sidecar (Origin Pod)
+       │ Receives response from replica
+       │ Returns it to the client
+       ▼
+       CLIENT
+```
+
+- Background Process: Probing
+```
+       [Probe Manager in Sidecar]
+       ├─ Periodically sends GET /probe to all replicas
+       ├─ /probe in replicas returns:
+       │     {
+       │       "rif": current_requests_in_flight,
+       │       "timestamp": ...
+       │     }
+       └─ Updates local RIF + latency table for Replica Selector
+```
+
+## Probe Pool & Probing Architecture
+
+- **Probe Pool:** Maintains recent probe results for each backend, including average latency, RIF values, and probe timestamps. Used by the load balancer to make routing decisions.
+- **Probe Manager:** Consumes probe tasks from a queue, sends probe requests to backends, and updates the probe pool asynchronously (off the hot path).
+- **Task Queue:** Ensures probe requests are distributed and not repeated for the same backend until all have been probed (random selection without replacement).
+- **Prequal Load Balancer:** Classifies backends as hot/cold based on RIF values, chooses the cold backend with lowest latency, and schedules probe tasks for two randomly selected backends after each request.
 
 Backends register automatically with the proxy via periodic heartbeats, or can be registered manually. The proxy tracks backend health using heartbeat timeouts and a health check endpoint, and load balances requests to healthy backends.
 
@@ -39,8 +138,6 @@ Backends register automatically with the proxy via periodic heartbeats, or can b
 - **Extensive Automated Tests:** All core modules and algorithms are covered by unit tests.
 
 ---
-
-## Quick Start
 
 ### 1. Install dependencies
 ```bash
@@ -92,9 +189,7 @@ All configuration can be set via environment variables or by editing `src/config
 - `REGISTRY_CLASS`: Python path to the registry class (default: `core.backend_registry.BackendRegistry`)
 - `CUSTOM_REGISTER_HOOK`, `CUSTOM_UNREGISTER_HOOK`, `CUSTOM_PATH_REWRITE`, `CUSTOM_REQUEST_HOOK`, `CUSTOM_RESPONSE_HOOK`: Python paths to custom hook functions (optional)
 
----
-
-## Folder Structure
+## Running from Source
 
 - `src/` - Source code for proxy, server, load balancers, config, and abstractions
     - `abstractions/` - Abstract base classes for load balancer and registry
@@ -110,8 +205,6 @@ All configuration can be set via environment variables or by editing `src/config
 - `docs/` - Documentation
 
 ---
-
-## Running from Source
 
 ### 1. Add `src/` to your `PYTHONPATH`
 This ensures all imports like `from config.config import Config` work as expected.
