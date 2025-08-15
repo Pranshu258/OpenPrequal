@@ -12,3 +12,10 @@ repos:
         name: black (python code formatter)
         language_version: python3
         files: \.(py)$
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args: [--remove-all-unused-imports, --remove-unused-variables, --in-place]
+        files: ^src/.*\.py$
+        additional_dependencies: [autoflake]

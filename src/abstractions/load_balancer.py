@@ -16,4 +16,3 @@ class LoadBalancer(ABC):
         Returns:
             Optional[str]: The URL of the selected backend, or None if no backend is available.
         """
-        pass

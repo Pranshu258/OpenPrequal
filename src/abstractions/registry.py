@@ -22,7 +22,6 @@ class Registry(ABC):
         Returns:
             None
         """
-        pass
 
     @abstractmethod
     def unregister(self, url: str, port: Optional[int] = None, **kwargs):
@@ -37,7 +36,6 @@ class Registry(ABC):
         Returns:
             None
         """
-        pass
 
     @abstractmethod
     def list_backends(self) -> List[Backend]:
@@ -47,4 +45,3 @@ class Registry(ABC):
         Returns:
             List[Backend]: List of registered backend objects.
         """
-        pass

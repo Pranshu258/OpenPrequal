@@ -5,7 +5,6 @@ from typing import Optional
 
 from abstractions.load_balancer import LoadBalancer
 from config.logging_config import setup_logging
-from contracts.backend import Backend
 from core.probe_pool import ProbePool
 from core.probe_task_queue import ProbeTaskQueue
 

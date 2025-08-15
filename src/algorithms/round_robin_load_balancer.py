@@ -3,7 +3,6 @@ from typing import Optional
 
 from abstractions.load_balancer import LoadBalancer
 from config.logging_config import setup_logging
-from contracts.backend import Backend
 
 setup_logging()
 logger = logging.getLogger(__name__)
