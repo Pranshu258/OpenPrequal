@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 
 from core.probe_task_queue import ProbeTaskQueue
