@@ -49,7 +49,11 @@ app = FastAPI(lifespan=lifespan)
 async def read_root():
     # Simulate network delay between 50ms and 300ms
     await asyncio.sleep(random.uniform(0.05, 0.3))
-    return {"message": f"Hello from backend at {Config.BACKEND_URL}!"}
+    return Response(
+        content=f'{{"message": "Hello from backend at {Config.BACKEND_URL}!"}}',
+        media_type="application/json",
+        headers={"X-Backend-Id": Config.BACKEND_URL},
+    )
 
 
 app.middleware("http")(metrics_manager.prometheus_middleware)
@@ -63,10 +67,15 @@ def metrics():
 @app.get("/probe", response_model=ProbeResponse)
 def health_probe():
     logger.info(f"probe requested from {Config.BACKEND_URL}")
-    return ProbeResponse(
+    probe_response = ProbeResponse(
         status="ok",
         in_flight_requests=int(metrics_manager.get_in_flight()),
         avg_latency=metrics_manager.get_avg_latency(),
+    )
+    return Response(
+        content=probe_response.model_dump_json(),
+        media_type="application/json",
+        headers={"X-Backend-Id": Config.BACKEND_URL},
     )
 
 
