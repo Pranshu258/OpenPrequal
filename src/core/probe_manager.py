@@ -32,13 +32,13 @@ class ProbeManager:
                     )
                     if resp.status_code == 200:
                         data = resp.json()
-                        latency = data.get("latency", 0.0)
-                        rif = data.get("rif", 0.0)
+                        latency = data.get("avg_latency", 0.0)
+                        rif = data.get("in_flight_requests", 0.0)
                         self.probe_pool.add_probe(backend_url, latency, rif)
                         logger.info(
-                            f"Probe success for {backend_url}: latency={latency}, rif={rif}"
+                            f"Probe success for {backend_url}: avg_latency={latency}, in_flight_requests={rif}"
                         )
-                        logger.info(f"Probe latency for {backend_url}: {latency}")
+                        logger.info(f"Probe avg_latency for {backend_url}: {latency}")
                     else:
                         logger.warning(
                             f"Probe failed for {backend_url}: status={resp.status_code}"

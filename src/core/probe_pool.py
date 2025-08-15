@@ -4,7 +4,7 @@ from collections import deque
 
 class ProbePool:
     def __init__(self):
-        # Structure: {backend_id: {'latencies': deque, 'rif_values': deque, 'timestamps': deque, 'current_latency': float}}
+        # Structure: {backend_id: {'latencies': deque, 'rif_values': deque, 'timestamp': float, 'current_latency': float}}
         self.probes = {}
         self.max_backends = 16
 
@@ -38,7 +38,4 @@ class ProbePool:
             return list(self.probes[backend_id]["rif_values"])
         return []
 
-    def get_timestamps(self, backend_id):
-        if backend_id in self.probes:
-            return list(self.probes[backend_id]["timestamps"])
-        return []
+    # Removed get_timestamps; only latest timestamp is stored per backend
