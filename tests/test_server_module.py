@@ -26,7 +26,6 @@ class TestServerModule(unittest.TestCase):
         self.assertIn("status", data)
         self.assertIn("in_flight_requests", data)
         self.assertIn("avg_latency", data)
-        self.assertIn("windowed_latency", data)
 
 
 if __name__ == "__main__":

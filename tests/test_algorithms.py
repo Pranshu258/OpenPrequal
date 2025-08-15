@@ -30,16 +30,64 @@ class TestPrequalLoadBalancer(unittest.TestCase):
             avg_latency=2,
         )
         reg = DummyRegistry([b1, b2])
-        lb = PrequalLoadBalancer(reg)
+
+        # Provide dummy probe_pool and probe_task_queue
+        class DummyProbePool:
+            def get_rif_values(self, backend_id):
+                # Make b cold (current rif < median), a hot (current rif >= median)
+                if backend_id == "a":
+                    return [2, 2]  # median=2, current=2 (hot)
+                else:
+                    return [1, 2]  # median=1.5, current=2 (hot), but let's make b cold
+
+            def get_current_latency(self, backend_id):
+                return 1 if backend_id == "a" else 0.5
+
+        # To ensure b is cold, set current rif < median for b
+        class DummyProbePool:
+            def get_rif_values(self, backend_id):
+                if backend_id == "a":
+                    return [2, 2]  # hot
+                else:
+                    return [1, 0]  # median=0.5, current=0 (cold)
+
+            def get_current_latency(self, backend_id):
+                return 1 if backend_id == "a" else 0.5
+
+        class DummyProbeTaskQueue:
+            async def add_task(self, backend_id):
+                pass
+
+        probe_pool = DummyProbePool()
+        probe_task_queue = DummyProbeTaskQueue()
+        lb = PrequalLoadBalancer(reg, probe_pool, probe_task_queue)
         # Should always select b2
-        selected = lb.get_next_backend()
+        import asyncio
+
+        selected = asyncio.run(lb.get_next_backend())
         self.assertEqual(selected, "b")
 
     def test_balancer_no_healthy(self):
         b1 = Backend(url="a", health=False)
         reg = DummyRegistry([b1])
-        lb = PrequalLoadBalancer(reg)
-        self.assertIsNone(lb.get_next_backend())
+
+        class DummyProbePool:
+            def get_rif_values(self, backend_id):
+                return []
+
+            def get_current_latency(self, backend_id):
+                return None
+
+        class DummyProbeTaskQueue:
+            async def add_task(self, backend_id):
+                pass
+
+        probe_pool = DummyProbePool()
+        probe_task_queue = DummyProbeTaskQueue()
+        lb = PrequalLoadBalancer(reg, probe_pool, probe_task_queue)
+        import asyncio
+
+        self.assertIsNone(asyncio.run(lb.get_next_backend()))
 
 
 class TestRoundRobinLoadBalancer(unittest.TestCase):

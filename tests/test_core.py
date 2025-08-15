@@ -101,21 +101,24 @@ class TestMetricsManager(unittest.TestCase):
 
 class TestProxyHandler(unittest.IsolatedAsyncioTestCase):
     async def test_proxy_handler_no_backend(self):
-        handler = ProxyHandler()
+        from httpx import AsyncClient
+
+        handler = ProxyHandler(AsyncClient())
         req = MagicMock()
         resp = await handler.handle_proxy(req, "path", None)
         self.assertEqual(resp.status_code, 503)
 
     @patch("core.proxy_handler.httpx.AsyncClient")
     async def test_proxy_handler_success(self, mock_client):
-        handler = ProxyHandler()
-        req = MagicMock()
+        # Use the mocked client instance for ProxyHandler
+        client_instance = mock_client.return_value.__aenter__.return_value
+        handler = ProxyHandler(client_instance)
+        req = AsyncMock()
         req.method = "GET"
         req.headers = {}
         req.body = AsyncMock(return_value=b"")
         req.query_params = {}
         mock_resp = MagicMock(status_code=200, content=b"ok", headers={})
-        client_instance = mock_client.return_value.__aenter__.return_value
         client_instance.request = AsyncMock(return_value=mock_resp)
         resp = await handler.handle_proxy(req, "path", "http://backend")
         self.assertEqual(resp.status_code, 200)
