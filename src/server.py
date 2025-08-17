@@ -51,7 +51,7 @@ app.middleware("http")(metrics_manager.prometheus_middleware)
 @app.get("/")
 async def read_root():
     return Response(
-        content=f'{"message": "Hello from backend at {Config.BACKEND_URL}!"}',
+        content=f'{{"message": "Hello from backend at {Config.BACKEND_URL}!"}}',
         media_type="application/json",
         headers={"X-Backend-Id": Config.BACKEND_URL},
     )
