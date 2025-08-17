@@ -5,3 +5,4 @@ prometheus_client
 pytest
 # Add pre-commit for development hooks
 pre-commit
+locust
