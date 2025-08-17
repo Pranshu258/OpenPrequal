@@ -7,7 +7,7 @@ from locust import HttpUser, TaskSet, between, task
 
 class UserBehavior(TaskSet):
     backend_counter = Counter()
-    log_file = "locust_backend_distribution.log"
+    log_file = "logs/locust_backend_distribution.log"
 
     @task
     def health_check(self):
