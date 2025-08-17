@@ -1,6 +1,8 @@
 #!/bin/bash
 # Script to kill all backend and proxy servers started by start_backends.sh
 
+mkdir logs/
+
 # Kill all uvicorn processes running src.server:app or src.proxy:app
 ps aux | grep 'uvicorn' | grep -E 'server:app|proxy:app' | grep -v grep | awk '{print $2}' | xargs -r kill
 
