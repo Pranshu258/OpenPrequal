@@ -7,7 +7,7 @@ from starlette.types import ASGIApp
 
 from core.metrics_manager import MetricsManager
 
-RIF_THRESHOLD = 500
+RIF_THRESHOLD = 300
 LATENCY_PER_RIF = 0.001  # 1ms per RIF, adjust as needed
 
 
