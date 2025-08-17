@@ -1,6 +1,4 @@
-import asyncio
 import logging
-import random
 
 from config.logging_config import setup_logging
 
@@ -16,6 +14,7 @@ from config.config import Config
 from contracts.backend import Backend
 from contracts.probe_response import ProbeResponse
 from core.heartbeat_client import HeartbeatClient
+from core.load_sim_middleware import LoadSimMiddleware
 from core.metrics_manager import MetricsManager
 
 # Instantiate metrics manager
@@ -44,19 +43,18 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
+# Add RIF load simulation middleware before metrics middleware
+app.add_middleware(LoadSimMiddleware, metrics_manager=metrics_manager)
+app.middleware("http")(metrics_manager.prometheus_middleware)
+
 
 @app.get("/")
 async def read_root():
-    # Simulate network delay between 50ms and 300ms
-    await asyncio.sleep(random.uniform(0.05, 0.3))
     return Response(
-        content=f'{{"message": "Hello from backend at {Config.BACKEND_URL}!"}}',
+        content=f'{"message": "Hello from backend at {Config.BACKEND_URL}!"}',
         media_type="application/json",
         headers={"X-Backend-Id": Config.BACKEND_URL},
     )
-
-
-app.middleware("http")(metrics_manager.prometheus_middleware)
 
 
 @app.get("/metrics")
