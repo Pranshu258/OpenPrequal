@@ -11,8 +11,8 @@ echo "Killed all backend and proxy servers."
 # Script to start multiple backend servers on different ports
 
 # Start the proxy server
-echo "Starting proxy server on port 8000"
-nohup env PYTHONPATH=src uvicorn proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
+echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS"
+nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
 
 # Number of backend servers to start (default: 2)
 NUM_SERVERS=${1:-2}
