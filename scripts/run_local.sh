@@ -3,7 +3,6 @@
 
 
 mkdir -p logs/
-rm -f logs/*
 
 # Kill all uvicorn processes running src.server:app or src.proxy:app
 ps aux | grep 'uvicorn' | grep -E 'server:app|proxy:app' | grep -v grep | awk '{print $2}' | xargs -r kill
@@ -14,7 +13,15 @@ sleep 20
 
 # Script to start multiple backend servers on different ports
 
-# Start the proxy server
+
+# Ensure port 8000 is free before starting the proxy server
+if lsof -i :8000 -sTCP:LISTEN -t >/dev/null ; then
+  echo "Port 8000 is still in use. Attempting to free it..."
+  lsof -i :8000 -sTCP:LISTEN -t | xargs -r kill -9
+  echo "Killed process(es) using port 8000. Waiting 2 seconds..."
+  sleep 2
+fi
+
 echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS"
 nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
 
