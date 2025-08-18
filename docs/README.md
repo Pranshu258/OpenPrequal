@@ -397,8 +397,6 @@ Here is a comparative analysis of the two load test result files: `prequal_resul
 - Both algorithms are overwhelmed at extreme loads, but Prequal is more resilient.
 - For production, further tuning or scaling may be needed to handle very high concurrency.
 
-Let me know if you want charts or a more detailed breakdown!
-
 ## Extending
 
 You can extend OpenPrequal by implementing your own load balancer or custom hooks:
