@@ -7,8 +7,8 @@ PROXY_RESTART_SCRIPT="scripts/run_local.sh"  # Adjust if needed
 LOCUST_FILE="locustfile.py"
 LOCUST_HOST="http://localhost:8000"  # Adjust if needed
 USERS=10000
-SPAWN_RATE=10
-RUN_TIME="5m"
+SPAWN_RATE=100
+RUN_TIME="1m"
 RESULTS_DIR="logs/"
 
 mkdir -p "$RESULTS_DIR"

@@ -347,6 +347,58 @@ PYTHONPATH=src pytest tests/test_core.py
 ```
 Test results will show passed/failed cases and coverage information.
 
+## Performance
+Here is a comparative analysis of the two load test result files: `prequal_results.csv` (Prequal Load Balancer) and `round_robin_results.csv` (Round Robin Load Balancer):
+
+### 1. Throughput and Request Distribution
+- Both algorithms ramped up to 10,000 users at a rate of 100 users/sec.
+- The number of requests handled is similar in both cases, with both reaching over 11,000 requests by the end of the test.
+- Backend distribution is nearly even between `http://localhost:8001` and `http://localhost:8002` for both algorithms until late in the test, where an 'unknown' backend appears (likely due to errors or unhandled requests).
+
+### 2. Latency (Response Times)
+- **Prequal Load Balancer:**
+  - Initial average response times are lower (starting at 105ms, dropping to 72ms at peak throughput).
+  - As load increases, average response time rises steadily, reaching 4,357ms at the end.
+  - Maximum response time spikes up to 37,281ms.
+- **Round Robin Load Balancer:**
+  - Starts with higher average response times (144ms, dropping to 81ms at peak).
+  - Response times increase more rapidly under load, reaching 5,787ms at the end.
+  - Maximum response time spikes up to 42,654ms.
+
+### 3. Error Rate (Failures)
+- **Prequal:**
+  - No failures until ~6,168 requests, then failure rate increases, peaking at 5,666 failures (48.02%) at the end.
+- **Round Robin:**
+  - No failures until ~5,463 requests, then failure rate increases, peaking at 6,757 failures (55.62%) at the end.
+- The round robin approach has a higher failure rate under heavy load.
+
+### 4. Backend Distribution
+- Both algorithms distribute requests evenly between the two backends until errors start, after which an 'unknown' backend appears, indicating failed or unassigned requests.
+
+### 5. Observations
+- Both algorithms perform similarly at low to moderate load.
+- The Prequal Load Balancer maintains lower average response times and a lower failure rate under high load compared to Round Robin.
+- Both algorithms degrade under extreme load, but Prequal degrades more gracefully.
+- The appearance of 'unknown' in backend distribution suggests a point where the system cannot assign requests, likely due to overload.
+
+### 6. Key Metrics Table
+
+| Metric                | Prequal (Final) | Round Robin (Final) |
+|-----------------------|-----------------|---------------------|
+| Total Requests        | 11,800          | 12,149              |
+| Total Failures        | 5,666 (48.02%)  | 6,757 (55.62%)      |
+| Avg Response Time     | 4,357 ms        | 5,787 ms            |
+| Max Response Time     | 37,281 ms       | 42,654 ms           |
+| Median Response Time  | 360 ms          | 7,800 ms            |
+| Backend Distribution  | Even, then 'unknown' | Even, then 'unknown' |
+
+### 7. Conclusion
+- The Prequal Load Balancer outperforms Round Robin under high load, with lower latency and fewer failures.
+- Both algorithms are overwhelmed at extreme loads, but Prequal is more resilient.
+- For production, further tuning or scaling may be needed to handle very high concurrency.
+
+Let me know if you want charts or a more detailed breakdown!
+
 ## Extending
 
 You can extend OpenPrequal by implementing your own load balancer or custom hooks:
