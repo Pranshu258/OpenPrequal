@@ -1,4 +1,5 @@
 import asyncio
+import random
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
@@ -7,7 +8,7 @@ from starlette.types import ASGIApp
 
 from core.metrics_manager import MetricsManager
 
-RIF_THRESHOLD = 300
+RIF_THRESHOLD = 1000
 LATENCY_PER_RIF = 0.001  # 1ms per RIF, adjust as needed
 
 
@@ -23,7 +24,12 @@ class LoadSimMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 content={"detail": "Service Unavailable: too many concurrnt requests!"},
             )
-        # Simulate latency proportional to RIF
-        await asyncio.sleep(rif_count * LATENCY_PER_RIF)
+        # Simulate latency: fixed mean/stddev, plus jitter based on RIF
+        mean = 0.05  # 50ms
+        stddev = 0.01  # 10ms
+        base_latency = max(0, random.gauss(mean, stddev))
+        jitter = random.uniform(0, rif_count * 0.001)  # up to 1ms per RIF as jitter
+        latency = base_latency + jitter
+        await asyncio.sleep(latency)
         response = await call_next(request)
         return response

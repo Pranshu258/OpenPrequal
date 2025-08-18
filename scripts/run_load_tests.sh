@@ -8,7 +8,7 @@ LOCUST_FILE="locustfile.py"
 LOCUST_HOST="http://localhost:8000"  # Adjust if needed
 USERS=10000
 SPAWN_RATE=100
-RUN_TIME="1m"
+RUN_TIME="5m"
 RESULTS_DIR="logs/"
 
 mkdir -p "$RESULTS_DIR"
