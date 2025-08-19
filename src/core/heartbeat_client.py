@@ -64,7 +64,9 @@ class HeartbeatClient:
         async with httpx.AsyncClient() as client:
             while self._running:
                 try:
-                    self.backend.avg_latency = self.metrics_manager.get_avg_latency()
+                    self.backend.avg_latency = (
+                        await self.metrics_manager.get_avg_latency()
+                    )
                     self.backend.in_flight_requests = (
                         self.metrics_manager.get_in_flight()
                     )
