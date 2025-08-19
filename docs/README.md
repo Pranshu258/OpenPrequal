@@ -357,11 +357,11 @@ Here is a comparative analysis of Prequal Load Balancer and Round Robin Load Bal
 
 ### Latency (Response Times)
 - **Prequal Load Balancer:**
-  - Initial average response times are lower (starting at 105ms, dropping to 72ms at peak throughput).
+  - Initial average response times are lower (starting at 72ms, reaching to 105ms at peak).
   - As load increases, average response time rises steadily, reaching 4,357ms at the end.
   - Maximum response time spikes up to 37,281ms.
 - **Round Robin Load Balancer:**
-  - Starts with higher average response times (144ms, dropping to 81ms at peak).
+  - Starts with higher average response times (81ms, reaching to 144ms at peak).
   - Response times increase more rapidly under load, reaching 5,787ms at the end.
   - Maximum response time spikes up to 42,654ms.
 
@@ -390,7 +390,7 @@ Here is a comparative analysis of Prequal Load Balancer and Round Robin Load Bal
 | Avg Response Time     | 4,357 ms        | 5,787 ms            |
 | Max Response Time     | 37,281 ms       | 42,654 ms           |
 | Median Response Time  | 360 ms          | 7,800 ms            |
-| Backend Distribution  | Even, then 'unknown' | Even, then 'unknown' |
+| Backend Distribution  | Even | Even |
 
 ### Conclusion
 - The Prequal Load Balancer outperforms Round Robin under high load, with lower latency and fewer failures.
