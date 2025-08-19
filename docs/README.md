@@ -33,7 +33,12 @@ It features dynamic backend registration, health checks, pluggable load balancin
 ## Features
 - **Dynamic Backend Registration:** Backends can register/unregister automatically via heartbeat or manually via API, allowing seamless scaling and failover.
 - **Health Checks:** The proxy tracks backend health using heartbeat timeouts and `/probe` endpoint, ensuring requests are only sent to healthy replicas.
-- **Pluggable Load Balancer:** Easily switch between Prequal (default), round robin, or custom strategies via config/env. Prequal uses real-time RIF (requests-in-flight) and latency for optimal routing.
+- **Pluggable Load Balancer:** Easily switch between Prequal (default), round robin, or a variety of advanced strategies via config/env. Prequal uses real-time RIF (requests-in-flight) and latency for optimal routing. Additional built-in algorithms include:
+       - **Least RIF:** Chooses the backend with the fewest requests in flight.
+       - **Least Latency:** Chooses the backend with the lowest average latency.
+       - **Least RIF Power of Two Choices:** Randomly samples two backends and selects the one with fewer requests in flight.
+       - **Least Latency Power of Two Choices:** Randomly samples two backends and selects the one with lower latency.
+       - **Random:** Selects a healthy backend at random.
 - **Generic Proxy:** Proxies any HTTP method and path to registered backends, supporting REST, GraphQL, and custom APIs.
 - **Connection Reuse (Keep-Alive):** The proxy uses persistent connections to backend servers, reusing connections for multiple requests to improve performance and reduce latency. This is achieved via a shared HTTP client with connection pooling. This avoids creating a new connection for every request, improving efficiency and scalability.
 - **Customizable Hooks:** Add custom registration logic, path rewriting, or request/response processing via Python hooks for advanced use cases.
@@ -401,13 +406,24 @@ Here is a comparative analysis of Prequal Load Balancer and Round Robin Load Bal
 
 You can extend OpenPrequal by implementing your own load balancer or custom hooks:
 
-- **Custom Load Balancer:** Subclass `LoadBalancer` in `src/abstractions/load_balancer.py` and implement the `select_backend` method. Example:
+- **Built-in Load Balancer Algorithms:**
+       - `algorithms.prequal_load_balancer.PrequalLoadBalancer` (default): Uses RIF and latency for optimal routing.
+       - `algorithms.round_robin_load_balancer.RoundRobinLoadBalancer`: Cycles through healthy backends in order.
+       - `algorithms.least_rif_load_balancer.LeastRIFLoadBalancer`: Chooses backend with the fewest requests in flight.
+       - `algorithms.least_latency_load_balancer.LeastLatencyLoadBalancer`: Chooses backend with the lowest average latency.
+       - `algorithms.least_rif_power_of_two_choices_load_balancer.LeastRIFPowerOfTwoChoicesLoadBalancer`: Randomly samples two backends and selects the one with fewer requests in flight.
+       - `algorithms.least_latency_power_of_two_choices_load_balancer.LeastLatencyPowerOfTwoChoicesLoadBalancer`: Randomly samples two backends and selects the one with lower latency.
+       - `algorithms.random_load_balancer.RandomLoadBalancer`: Selects a healthy backend at random.
+
+  To use any of these, set the `LOAD_BALANCER_CLASS` environment variable to the full Python path of the class.
+
+- **Custom Load Balancer:** Subclass `LoadBalancer` in `src/abstractions/load_balancer.py` and implement the `get_next_backend` method. Example:
        ```python
        from abstractions.load_balancer import LoadBalancer
        class MyCustomBalancer(LoadBalancer):
-              def select_backend(self, backends, probe_pool):
+              def get_next_backend(self):
                      # Custom logic here
-                     return backends[0]
+                     return "http://localhost:8001"
        ```
        Set `LOAD_BALANCER_CLASS` to your class path.
 
