@@ -1,6 +1,15 @@
 import unittest
 
+from algorithms.least_latency_load_balancer import LeastLatencyLoadBalancer
+from algorithms.least_latency_power_of_two_choices_load_balancer import (
+    LeastLatencyPowerOfTwoChoicesLoadBalancer,
+)
+from algorithms.least_rif_load_balancer import LeastRIFLoadBalancer
+from algorithms.least_rif_power_of_two_choices_load_balancer import (
+    LeastRIFPowerOfTwoChoicesLoadBalancer,
+)
 from algorithms.prequal_load_balancer import PrequalLoadBalancer
+from algorithms.random_load_balancer import RandomLoadBalancer
 from algorithms.round_robin_load_balancer import RoundRobinLoadBalancer
 from contracts.backend import Backend
 
@@ -105,6 +114,113 @@ class TestRoundRobinLoadBalancer(unittest.TestCase):
         b1 = Backend(url="a", port=1, health=False)
         reg = DummyRegistry([b1])
         lb = RoundRobinLoadBalancer(reg)
+        self.assertIsNone(lb.get_next_backend())
+
+
+class TestLeastRIFLoadBalancer(unittest.TestCase):
+    def test_least_rif(self):
+        b1 = Backend(url="a", health=True, in_flight_requests=5)
+        b2 = Backend(url="b", health=True, in_flight_requests=2)
+        b3 = Backend(url="c", health=True, in_flight_requests=7)
+        reg = DummyRegistry([b1, b2, b3])
+        lb = LeastRIFLoadBalancer(reg)
+        self.assertEqual(lb.get_next_backend(), "b")
+
+    def test_no_healthy(self):
+        b1 = Backend(url="a", health=False, in_flight_requests=1)
+        reg = DummyRegistry([b1])
+        lb = LeastRIFLoadBalancer(reg)
+        self.assertIsNone(lb.get_next_backend())
+
+
+class TestLeastLatencyLoadBalancer(unittest.TestCase):
+    def test_least_latency(self):
+        b1 = Backend(url="a", health=True, avg_latency=5)
+        b2 = Backend(url="b", health=True, avg_latency=2)
+        b3 = Backend(url="c", health=True, avg_latency=7)
+        reg = DummyRegistry([b1, b2, b3])
+        lb = LeastLatencyLoadBalancer(reg)
+        self.assertEqual(lb.get_next_backend(), "b")
+
+    def test_no_healthy(self):
+        b1 = Backend(url="a", health=False, avg_latency=1)
+        reg = DummyRegistry([b1])
+        lb = LeastLatencyLoadBalancer(reg)
+        self.assertIsNone(lb.get_next_backend())
+
+
+class TestLeastRIFPowerOfTwoChoicesLoadBalancer(unittest.TestCase):
+    def test_least_rif_power_of_two(self):
+        b1 = Backend(url="a", health=True, in_flight_requests=5)
+        b2 = Backend(url="b", health=True, in_flight_requests=2)
+        b3 = Backend(url="c", health=True, in_flight_requests=7)
+        reg = DummyRegistry([b1, b2, b3])
+        lb = LeastRIFPowerOfTwoChoicesLoadBalancer(reg)
+        # Run multiple times to cover randomness
+        for _ in range(10):
+            selected = lb.get_next_backend()
+            self.assertIn(selected, ["a", "b", "c"])
+
+    def test_one_backend(self):
+        b1 = Backend(url="a", health=True, in_flight_requests=1)
+        reg = DummyRegistry([b1])
+        lb = LeastRIFPowerOfTwoChoicesLoadBalancer(reg)
+        self.assertEqual(lb.get_next_backend(), "a")
+
+    def test_no_healthy(self):
+        b1 = Backend(url="a", health=False, in_flight_requests=1)
+        reg = DummyRegistry([b1])
+        lb = LeastRIFPowerOfTwoChoicesLoadBalancer(reg)
+        self.assertIsNone(lb.get_next_backend())
+
+
+class TestLeastLatencyPowerOfTwoChoicesLoadBalancer(unittest.TestCase):
+    def test_least_latency_power_of_two(self):
+        b1 = Backend(url="a", health=True, avg_latency=5)
+        b2 = Backend(url="b", health=True, avg_latency=2)
+        b3 = Backend(url="c", health=True, avg_latency=7)
+        reg = DummyRegistry([b1, b2, b3])
+        lb = LeastLatencyPowerOfTwoChoicesLoadBalancer(reg)
+        # Run multiple times to cover randomness
+        for _ in range(10):
+            selected = lb.get_next_backend()
+            self.assertIn(selected, ["a", "b", "c"])
+
+    def test_one_backend(self):
+        b1 = Backend(url="a", health=True, avg_latency=1)
+        reg = DummyRegistry([b1])
+        lb = LeastLatencyPowerOfTwoChoicesLoadBalancer(reg)
+        self.assertEqual(lb.get_next_backend(), "a")
+
+    def test_no_healthy(self):
+        b1 = Backend(url="a", health=False, avg_latency=1)
+        reg = DummyRegistry([b1])
+        lb = LeastLatencyPowerOfTwoChoicesLoadBalancer(reg)
+        self.assertIsNone(lb.get_next_backend())
+
+
+class TestRandomLoadBalancer(unittest.TestCase):
+    def test_random_backend(self):
+        b1 = Backend(url="a", health=True)
+        b2 = Backend(url="b", health=True)
+        b3 = Backend(url="c", health=True)
+        reg = DummyRegistry([b1, b2, b3])
+        lb = RandomLoadBalancer(reg)
+        # Run multiple times to cover randomness
+        for _ in range(10):
+            selected = lb.get_next_backend()
+            self.assertIn(selected, ["a", "b", "c"])
+
+    def test_one_backend(self):
+        b1 = Backend(url="a", health=True)
+        reg = DummyRegistry([b1])
+        lb = RandomLoadBalancer(reg)
+        self.assertEqual(lb.get_next_backend(), "a")
+
+    def test_no_healthy(self):
+        b1 = Backend(url="a", health=False)
+        reg = DummyRegistry([b1])
+        lb = RandomLoadBalancer(reg)
         self.assertIsNone(lb.get_next_backend())
 
 
