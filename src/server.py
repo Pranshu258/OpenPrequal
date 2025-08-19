@@ -63,12 +63,12 @@ def metrics():
 
 
 @app.get("/probe", response_model=ProbeResponse)
-def health_probe():
+async def health_probe():
     logger.info(f"probe requested from {Config.BACKEND_URL}")
     probe_response = ProbeResponse(
         status="ok",
         in_flight_requests=int(metrics_manager.get_in_flight()),
-        avg_latency=metrics_manager.get_avg_latency(),
+        avg_latency=await metrics_manager.get_avg_latency(),
     )
     return Response(
         content=probe_response.model_dump_json(),

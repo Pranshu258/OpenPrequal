@@ -27,12 +27,12 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_history = set()
         logger.info("PrequalLoadBalancer initialized.")
 
-    def _classify_backends(self, backends):
+    async def _classify_backends(self, backends):
         """Classify backends as hot or cold based on RIF values."""
         cold, hot = [], []
         for backend in backends:
             backend_id = backend.url
-            rifs = self._probe_pool.get_rif_values(backend_id)
+            rifs = await self._probe_pool.get_rif_values(backend_id)
             if not rifs:
                 cold.append(backend)
                 continue
@@ -44,40 +44,26 @@ class PrequalLoadBalancer(LoadBalancer):
                 hot.append(backend)
         return cold, hot
 
-    def _select_backend(self, cold, hot):
+    async def _select_backend(self, cold, hot):
         """Select backend from cold (lowest latency) or hot (lowest current rif)."""
         if cold:
-            min_latency = min(
-                self._probe_pool.get_current_latency(b.url) or float("inf")
-                for b in cold
-            )
+            latencies = []
+            for b in cold:
+                latency = await self._probe_pool.get_current_latency(b.url)
+                latencies.append(latency if latency is not None else float("inf"))
+            min_latency = min(latencies)
             candidates = [
-                b
-                for b in cold
-                if (self._probe_pool.get_current_latency(b.url) or float("inf"))
-                == min_latency
+                b for b, latency in zip(cold, latencies) if latency == min_latency
             ]
             selected = random.choice(candidates)
             logger.info(f"Selected cold backend (lowest latency): {selected.url}")
         else:
-            min_rif = min(
-                (
-                    self._probe_pool.get_rif_values(b.url)[-1]
-                    if self._probe_pool.get_rif_values(b.url)
-                    else float("inf")
-                )
-                for b in hot
-            )
-            candidates = [
-                b
-                for b in hot
-                if (
-                    self._probe_pool.get_rif_values(b.url)[-1]
-                    if self._probe_pool.get_rif_values(b.url)
-                    else float("inf")
-                )
-                == min_rif
-            ]
+            rifs = []
+            for b in hot:
+                vals = await self._probe_pool.get_rif_values(b.url)
+                rifs.append(vals[-1] if vals else float("inf"))
+            min_rif = min(rifs)
+            candidates = [b for b, rif in zip(hot, rifs) if rif == min_rif]
             selected = random.choice(candidates)
             logger.info(f"Selected hot backend (lowest current rif): {selected.url}")
         return selected
@@ -105,7 +91,7 @@ class PrequalLoadBalancer(LoadBalancer):
             logger.warning("No healthy backends available for prequal load balancer.")
             return None
 
-        cold, hot = self._classify_backends(healthy_backends)
-        selected = self._select_backend(cold, hot)
+        cold, hot = await self._classify_backends(healthy_backends)
+        selected = await self._select_backend(cold, hot)
         await self._schedule_probe_tasks(healthy_backends)
         return selected.url
