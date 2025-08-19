@@ -348,7 +348,7 @@ PYTHONPATH=src pytest tests/test_core.py
 Test results will show passed/failed cases and coverage information.
 
 ## Performance
-Here is a comparative analysis of the two load test result files: `prequal_results.csv` (Prequal Load Balancer) and `round_robin_results.csv` (Round Robin Load Balancer):
+Here is a comparative analysis of Prequal Load Balancer and Round Robin Load Balancer:
 
 ### Throughput and Request Distribution
 - Both algorithms ramped up to 10,000 users at a rate of 100 users/sec.
