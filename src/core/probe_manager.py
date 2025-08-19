@@ -15,7 +15,7 @@ class ProbeManager:
         probe_pool: ProbePool,
         probe_task_queue: ProbeTaskQueue,
         probe_endpoint: str = "/probe",
-        max_concurrent_probes: int = 5,
+        max_concurrent_probes: int = 20,  # Increased default concurrency
     ):
         self.probe_pool = probe_pool
         self.probe_task_queue = probe_task_queue
@@ -34,7 +34,7 @@ class ProbeManager:
                         data = resp.json()
                         latency = data.get("avg_latency", 0.0)
                         rif = data.get("in_flight_requests", 0.0)
-                        self.probe_pool.add_probe(backend_url, latency, rif)
+                        await self.probe_pool.add_probe(backend_url, latency, rif)
                         logger.info(
                             f"Probe success for {backend_url}: avg_latency={latency}, in_flight_requests={rif}"
                         )

@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import threading
 import time
 from bisect import bisect_left
 from collections import defaultdict, deque
@@ -34,13 +34,12 @@ class MetricsManager:
         )
         # Map of RIF (Requests In-Flight) -> deque of recent latencies (max 1000)
         self._rif_latencies = defaultdict(lambda: deque(maxlen=1000))
-        self._latency_lock = threading.Lock()
+        self._latency_lock = asyncio.Lock()
         # Optional bin configuration (sorted, unique)
-        self._rif_bins = (
-            sorted(set(rif_bins))
-            if rif_bins is not None and len(rif_bins) > 0
-            else None
-        )
+        if rif_bins is not None and len(rif_bins) > 0:
+            self._rif_bins = sorted(set(rif_bins))
+        else:
+            self._rif_bins = None
         logger.info("MetricsManager initialized.")
 
     # Helper: map an observed RIF to a storage key (either exact RIF or bin upper-bound)
@@ -67,7 +66,6 @@ class MetricsManager:
         """
         start = time.time()
         self.IN_FLIGHT.inc()
-        # Capture RIF at start (after increment) to attribute latency to this load level
         rif_at_start = int(self.get_in_flight())
         try:
             response = await call_next(request)
@@ -77,7 +75,7 @@ class MetricsManager:
             self.IN_FLIGHT.dec()
             self.REQ_LATENCY.observe(elapsed)
             # Store latency under the RIF observed at request start
-            with self._latency_lock:
+            async with self._latency_lock:
                 key = self._get_rif_key(rif_at_start)
                 self._rif_latencies[key].append(elapsed)
             logger.debug(
@@ -95,7 +93,7 @@ class MetricsManager:
         logger.debug(f"Current in-flight requests: {val}")
         return val
 
-    def get_avg_latency(self):
+    async def get_avg_latency(self):
         """
         Get the median request latency for the current RIF (requests in-flight) value.
 
@@ -103,8 +101,7 @@ class MetricsManager:
             float: Median latency in seconds for the current RIF, or 0.0 if none.
         """
         current_rif = int(self.get_in_flight())
-        with self._latency_lock:
-            # Exact samples for current RIF (or its bin key, if binning enabled)
+        async with self._latency_lock:
             key = self._get_rif_key(current_rif)
             samples = list(self._rif_latencies.get(key, ()))
             if samples:
@@ -114,19 +111,15 @@ class MetricsManager:
                 )
                 return med
 
-            # Build a sorted list of RIFs that have samples
             rif_keys = sorted(k for k, v in self._rif_latencies.items() if len(v) > 0)
-
             if not rif_keys:
                 logger.debug("No latency samples recorded yet; returning 0.0")
                 return 0.0
 
-            # Find nearest lower and higher RIF keys
             idx = bisect_left(rif_keys, key)
             lower_key = rif_keys[idx - 1] if idx > 0 else None
             higher_key = rif_keys[idx] if idx < len(rif_keys) else None
 
-            # If only one neighbor exists, use its median
             if lower_key is not None and higher_key is None:
                 med_lower = float(median(self._rif_latencies[lower_key]))
                 logger.debug(
@@ -141,19 +134,14 @@ class MetricsManager:
                 )
                 return med_higher
 
-            # If both neighbors exist, interpolate between their medians
             if lower_key is not None and higher_key is not None:
                 med_lower = float(median(self._rif_latencies[lower_key]))
                 med_higher = float(median(self._rif_latencies[higher_key]))
-
                 if higher_key == lower_key:
-                    # Degenerate case (shouldn't happen with distinct keys), return either
                     logger.debug(
                         f"Degenerate neighbor case for RIF={current_rif}; returning median {med_lower:.4f}s"
                     )
                     return med_lower
-
-                # Linear interpolation based on distance between RIF levels
                 t = (key - lower_key) / (higher_key - lower_key)
                 estimate = med_lower + t * (med_higher - med_lower)
                 logger.debug(
@@ -164,6 +152,4 @@ class MetricsManager:
                     )
                 )
                 return float(estimate)
-
-        # As a final fallback
         return 0.0
