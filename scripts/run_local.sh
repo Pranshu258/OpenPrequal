@@ -23,7 +23,7 @@ if lsof -i :8000 -sTCP:LISTEN -t >/dev/null ; then
 fi
 
 echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS"
-nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
+nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 --workers 4 > logs/backend_8000.log 2>&1 &
 
 echo "Proxy server started. Waiting 20 seconds before starting backends..."
 sleep 20
@@ -38,7 +38,7 @@ START_PORT=${3:-8001}
 for ((i=0; i<$NUM_SERVERS; i++)); do
   PORT=$((START_PORT + i))
   echo "Starting backend server on port $PORT"
-  PROXY_URL=$PROXY_URL BACKEND_PORT=$PORT nohup env PYTHONPATH=src uvicorn server:app --port $PORT > logs/backend_$PORT.log 2>&1 &
+  PROXY_URL=$PROXY_URL BACKEND_PORT=$PORT nohup env PYTHONPATH=src uvicorn server:app --port $PORT --workers 4 > logs/backend_$PORT.log 2>&1 &
 done
 
 echo "Started $NUM_SERVERS backend servers. Logs: backend_<PORT>.log"
