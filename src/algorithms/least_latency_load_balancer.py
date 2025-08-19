@@ -11,7 +11,7 @@ class LeastLatencyLoadBalancer(LoadBalancer):
     def __init__(self, registry):
         self.registry = registry
 
-    def get_next_backend(self) -> Optional[str]:
+    async def get_next_backend(self) -> Optional[str]:
         backends = [b for b in self.registry.list_backends() if b.health]
         if not backends:
             return None

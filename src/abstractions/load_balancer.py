@@ -9,7 +9,7 @@ class LoadBalancer(ABC):
     """
 
     @abstractmethod
-    def get_next_backend(self) -> Optional[str]:
+    async def get_next_backend(self) -> Optional[str]:
         """
         Return the URL of the next backend to route a request to, or None if none available.
 

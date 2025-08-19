@@ -24,7 +24,7 @@ class RoundRobinLoadBalancer(LoadBalancer):
         self._last_index = 0
         logger.info("RoundRobinLoadBalancer initialized.")
 
-    def get_next_backend(self) -> Optional[str]:
+    async def get_next_backend(self) -> Optional[str]:
         """
         Select the next backend to route a request to using round-robin selection.
 
