@@ -83,7 +83,7 @@ class PrequalLoadBalancer(LoadBalancer):
             t for t in self._request_timestamps if now - t < window
         ]
         rps = max(len(self._request_timestamps) / window, 1e-6)  # Avoid div by zero
-        R = 50.0 / rps
+        R = 5.0 / rps
         R = min(R, 1.0)  # Cap at 1.0
         backend_ids = set(b.url for b in healthy_backends)
         self._probe_history &= backend_ids  # Remove history for unhealthy backends
