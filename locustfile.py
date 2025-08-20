@@ -1,13 +1,19 @@
 import json
 import os
 from collections import Counter
+from datetime import datetime
 
 from locust import HttpUser, TaskSet, between, task
 
 
+def get_log_file_name():
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"logs/locust_backend_distribution_{timestamp}.log"
+
+
 class UserBehavior(TaskSet):
     backend_counter = Counter()
-    log_file = "logs/locust_backend_distribution.log"
+    log_file = get_log_file_name()
 
     @task
     def health_check(self):
@@ -17,7 +23,6 @@ class UserBehavior(TaskSet):
             total = sum(self.backend_counter.values())
             if total % 100 == 0:
                 dist = dict(self.backend_counter)
-                print(f"Backend distribution: {dist}")
                 # Append to log file as JSON
                 with open(self.log_file, "a") as f:
                     f.write(json.dumps({"total": total, "distribution": dist}) + "\n")
