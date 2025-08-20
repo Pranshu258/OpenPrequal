@@ -1,8 +1,7 @@
 import asyncio
 import random
 
-from fastapi import Request, status
-from fastapi.responses import JSONResponse
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
@@ -19,11 +18,11 @@ class LoadSimMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         rif_count = int(self.metrics_manager.get_in_flight())
-        if rif_count > RIF_THRESHOLD:
-            return JSONResponse(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"detail": "Service Unavailable: too many concurrnt requests!"},
-            )
+        # if rif_count > RIF_THRESHOLD:
+        #     return JSONResponse(
+        #         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        #         content={"detail": "Service Unavailable: too many concurrnt requests!"},
+        #     )
         # Simulate latency: fixed mean/stddev, plus jitter based on RIF
         mean = 0.05  # 50ms
         stddev = 0.01  # 10ms
