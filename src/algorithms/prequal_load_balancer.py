@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 from statistics import median
 from typing import Optional
 
@@ -25,6 +26,7 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_pool = probe_pool
         self._probe_task_queue = probe_task_queue
         self._probe_history = set()
+        self._request_timestamps = []  # For RPS tracking
         logger.info("PrequalLoadBalancer initialized.")
 
     async def _classify_backends(self, backends):
@@ -69,17 +71,35 @@ class PrequalLoadBalancer(LoadBalancer):
         return selected
 
     async def _schedule_probe_tasks(self, healthy_backends):
-        """Enqueue probe tasks for two randomly selected backends (without replacement)."""
+        """
+        Enqueue a probe task for a random healthy backend (without replacement) with probability R=50/RPS per request.
+        Tracks RPS using a sliding window of timestamps.
+        """
+        now = time.time()
+        window = 1.0  # seconds
+        self._request_timestamps.append(now)
+        # Remove timestamps outside the window
+        self._request_timestamps = [
+            t for t in self._request_timestamps if now - t < window
+        ]
+        rps = max(len(self._request_timestamps) / window, 1e-6)  # Avoid div by zero
+        R = 50.0 / rps
+        R = min(R, 1.0)  # Cap at 1.0
         backend_ids = set(b.url for b in healthy_backends)
         self._probe_history &= backend_ids  # Remove history for unhealthy backends
         available = list(backend_ids - self._probe_history)
-        if len(available) < 2:
+        if not available:
             self._probe_history = set()
             available = list(backend_ids)
-        probe_targets = random.sample(available, min(2, len(available)))
-        for backend_id in probe_targets:
+        if random.random() < R and available:
+            backend_id = random.choice(available)
             await self._probe_task_queue.add_task(backend_id)
             self._probe_history.add(backend_id)
+            logger.info(
+                f"Scheduled probe for backend {backend_id} (R={R:.3f}, RPS={rps:.2f})"
+            )
+        else:
+            logger.debug(f"No probe scheduled (R={R:.3f}, RPS={rps:.2f})")
 
     async def get_next_backend(self) -> Optional[str]:
         """
