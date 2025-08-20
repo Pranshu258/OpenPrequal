@@ -19,7 +19,10 @@ class WebsiteUser(FastHttpUser):
     @task
     def health_check(self):
         with self.client.get("/", catch_response=True) as response:
-            backend_id = response.headers.get("X-Backend-Id", "unknown")
+            if response is not None and hasattr(response, "headers"):
+                backend_id = response.headers.get("X-Backend-Id", "unknown")
+            else:
+                backend_id = "unknown"
             WebsiteUser.backend_counter[backend_id] += 1
             total = sum(WebsiteUser.backend_counter.values())
             if total % 100 == 0:
