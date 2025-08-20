@@ -6,13 +6,30 @@ logger = logging.getLogger(__name__)
 
 class ProbeTaskQueue:
     def __init__(self):
-        self.queue = asyncio.Queue()
+        self._set = set()
+        self._lock = asyncio.Lock()
+        self._not_empty = asyncio.Condition()
 
     async def add_task(self, backend_id):
-        await self.queue.put(backend_id)
+        async with self._lock:
+            if backend_id not in self._set:
+                self._set.add(backend_id)
+                async with self._not_empty:
+                    self._not_empty.notify()
+                logger.debug(f"Added probe task for backend {backend_id}")
+            else:
+                logger.debug(f"Probe task for backend {backend_id} already in set")
 
     async def get_task(self):
-        return await self.queue.get()
+        while True:
+            async with self._not_empty:
+                await self._not_empty.wait_for(lambda: len(self._set) > 0)
+            async with self._lock:
+                if self._set:
+                    backend_id = self._set.pop()
+                    logger.debug(f"Got probe task for backend {backend_id}")
+                    return backend_id
 
     def task_done(self):
-        self.queue.task_done()
+        # No-op for set-based queue, kept for compatibility
+        pass
