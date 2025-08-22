@@ -19,7 +19,11 @@ class WebsiteUser(FastHttpUser):
     @task
     def health_check(self):
         with self.client.get("/", catch_response=True) as response:
-            if response is not None and hasattr(response, "headers"):
+            if (
+                response is not None
+                and hasattr(response, "headers")
+                and response.headers is not None
+            ):
                 backend_id = response.headers.get("X-Backend-Id", "unknown")
             else:
                 backend_id = "unknown"
