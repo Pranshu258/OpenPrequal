@@ -55,15 +55,26 @@ function run_test() {
     
     # Run Locust in headless mode
     echo "Running Locust for $LABEL..."
-    if ! locust --processes -1 -f "$LOCUST_FILE" --headless -u $USERS -r $SPAWN_RATE --run-time $RUN_TIME --host "$LOCUST_HOST" --csv "$RESULTS_DIR/${LABEL}" > "$OUT_FILE" 2>&1; then
+    if ! ALGORITHM_NAME="$LABEL" locust --processes -1 -f "$LOCUST_FILE" --headless -u $USERS -r $SPAWN_RATE --run-time $RUN_TIME --host "$LOCUST_HOST" --csv "$RESULTS_DIR/${LABEL}" > "$OUT_FILE" 2>&1; then
         echo "[ERROR] Locust failed for $LABEL. See $OUT_FILE for details." | tee -a "$OUT_FILE"
         return 2
     fi
     echo "$LABEL test complete. Results saved to $OUT_FILE"
 }
 
-
 run_test "algorithms.round_robin_load_balancer.RoundRobinLoadBalancer" "round_robin" || echo "[WARN] round_robin test failed."
+run_test "algorithms.random_load_balancer.RandomLoadBalancer" "random" || echo "[WARN] random test failed."
+run_test "algorithms.least_latency_load_balancer.LeastLatencyLoadBalancer" "least_latency" || echo "[WARN] least_latency test failed."
+run_test "algorithms.least_latency_power_of_two_choices_load_balancer.LeastLatencyPowerOfTwoChoicesLoadBalancer" "least_latency_power_of_two_choices" || echo "[WARN] least_latency_power_of_two_choices test failed."
+run_test "algorithms.least_rif_load_balancer.LeastRIFLoadBalancer" "least_rif" || echo "[WARN] least_rif test failed."
+run_test "algorithms.least_rif_power_of_two_choices_load_balancer.LeastRIFPowerOfTwoChoicesLoadBalancer" "least_rif_power_of_two_choices" || echo "[WARN] least_rif_power_of_two_choices test failed."
 run_test "default" "prequal" || echo "[WARN] prequal test failed."
+
+
+# Move all *results.csv and locust_backend_distribution_* files to results/ folder
+FINAL_RESULTS_DIR="results/"
+mkdir -p "$FINAL_RESULTS_DIR"
+find "$RESULTS_DIR" -name "*results.csv" -exec mv {} "$FINAL_RESULTS_DIR" \;
+find "$RESULTS_DIR" -name "locust_backend_distribution_*" -exec mv {} "$FINAL_RESULTS_DIR" \;
 
 echo "\nLoad test comparison complete. Check $RESULTS_DIR for results."
