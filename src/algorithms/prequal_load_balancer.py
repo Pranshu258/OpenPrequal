@@ -31,6 +31,7 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_task_queue = probe_task_queue
         self._probe_history = set()
         self._request_timestamps = []  # For RPS tracking
+        self._last_probe_time = {}  # backend_id -> last probe timestamp
         logger.info("PrequalLoadBalancer initialized.")
 
     async def _classify_backends(self, backends):
@@ -76,7 +77,8 @@ class PrequalLoadBalancer(LoadBalancer):
 
     async def _schedule_probe_tasks(self, healthy_backends):
         """
-        Enqueue a probe task for a random healthy backend (without replacement) with probability R=50/RPS per request.
+        Enqueue a probe task for a random healthy backend (without replacement) with probability R=5/RPS per request.
+        Also ensures that every backend is probed at least once every 30 seconds.
         Tracks RPS using a sliding window of timestamps.
         """
         now = time.time()
@@ -91,6 +93,17 @@ class PrequalLoadBalancer(LoadBalancer):
         R = min(R, 1.0)  # Cap at 1.0
         backend_ids = set(b.url for b in healthy_backends)
         self._probe_history &= backend_ids  # Remove history for unhealthy backends
+        # --- Ensure at least one probe every 20 seconds per backend ---
+        min_probe_interval = 20.0
+        for backend_id in backend_ids:
+            last_time = self._last_probe_time.get(backend_id, 0)
+            if now - last_time >= min_probe_interval:
+                await self._probe_task_queue.add_task(backend_id)
+                self._last_probe_time[backend_id] = now
+                logger.info(
+                    f"Forced scheduled probe for backend {backend_id} (interval > 30s)"
+                )
+        # --- Probabilistic probe scheduling (existing logic) ---
         available = list(backend_ids - self._probe_history)
         if not available:
             self._probe_history = set()
@@ -99,6 +112,7 @@ class PrequalLoadBalancer(LoadBalancer):
             backend_id = random.choice(available)
             await self._probe_task_queue.add_task(backend_id)
             self._probe_history.add(backend_id)
+            self._last_probe_time[backend_id] = now
             logger.info(
                 f"Scheduled probe for backend {backend_id} (R={R:.3f}, RPS={rps:.2f})"
             )
