@@ -7,6 +7,9 @@ from locust import FastHttpUser, between, task
 
 
 def get_log_file_name():
+    algorithm = os.environ.get("ALGORITHM_NAME")
+    if algorithm:
+        return f"logs/locust_backend_distribution_{algorithm}.log"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"logs/locust_backend_distribution_{timestamp}.log"
 
