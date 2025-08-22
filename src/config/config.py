@@ -35,3 +35,6 @@ class Config:
     CUSTOM_PATH_REWRITE = os.environ.get("CUSTOM_PATH_REWRITE")
     CUSTOM_REQUEST_HOOK = os.environ.get("CUSTOM_REQUEST_HOOK")
     CUSTOM_RESPONSE_HOOK = os.environ.get("CUSTOM_RESPONSE_HOOK")
+
+    # Load balancer class selection
+    LOAD_BALANCER_CLASS = os.environ.get("LOAD_BALANCER_CLASS", "default")
