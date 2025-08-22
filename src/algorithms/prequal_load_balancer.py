@@ -5,6 +5,7 @@ from statistics import median
 from typing import Optional
 
 from abstractions.load_balancer import LoadBalancer
+from abstractions.registry import Registry
 from config.logging_config import setup_logging
 from core.probe_pool import ProbePool
 from core.probe_task_queue import ProbeTaskQueue
@@ -20,7 +21,10 @@ class PrequalLoadBalancer(LoadBalancer):
     """
 
     def __init__(
-        self, registry, probe_pool: ProbePool, probe_task_queue: ProbeTaskQueue
+        self,
+        registry: Registry,
+        probe_pool: ProbePool,
+        probe_task_queue: ProbeTaskQueue,
     ):
         self._registry = registry
         self._probe_pool = probe_pool
