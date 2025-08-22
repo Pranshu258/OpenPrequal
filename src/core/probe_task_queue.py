@@ -5,6 +5,11 @@ logger = logging.getLogger(__name__)
 
 
 class ProbeTaskQueue:
+    @property
+    def size(self):
+        """Return the number of unique probe tasks in the queue."""
+        return len(self._set)
+
     def __init__(self):
         self._set = set()
         self._lock = asyncio.Lock()

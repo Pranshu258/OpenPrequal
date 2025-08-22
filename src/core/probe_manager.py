@@ -49,7 +49,8 @@ class ProbeManager:
     async def run(self):
         self._running = True
         while self._running:
-            queue_size = self.probe_task_queue.queue.qsize()
+            # Log the deduplicated probe task queue size
+            queue_size = self.probe_task_queue.size
             logger.info(f"Probe task queue size: {queue_size}")
             backend_url = await self.probe_task_queue.get_task()
             await self.send_probe(backend_url)
