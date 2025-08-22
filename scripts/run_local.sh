@@ -25,9 +25,6 @@ fi
 echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS"
 nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 --workers 4 > logs/backend_8000.log 2>&1 &
 
-echo "Proxy server started. Waiting 20 seconds before starting backends..."
-sleep 20
-
 # Number of backend servers to start (default: 2)
 NUM_SERVERS=${1:-2}
 # Proxy URL (default: http://localhost:8000)
@@ -41,4 +38,4 @@ for ((i=0; i<$NUM_SERVERS; i++)); do
   PROXY_URL=$PROXY_URL BACKEND_PORT=$PORT nohup env PYTHONPATH=src uvicorn server:app --port $PORT --workers 4 > logs/backend_$PORT.log 2>&1 &
 done
 
-echo "Started $NUM_SERVERS backend servers. Logs: backend_<PORT>.log"
+echo "Started $NUM_SERVERS backend servers. Logs: backend_<$PORT>.log"
