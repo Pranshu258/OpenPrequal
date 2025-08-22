@@ -22,8 +22,11 @@ if lsof -i :8000 -sTCP:LISTEN -t >/dev/null ; then
   sleep 2
 fi
 
+if [ -z "$LOAD_BALANCER_CLASS" ]; then
+  LOAD_BALANCER_CLASS="default"
+fi
 echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS"
-nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 --workers 4 > logs/backend_8000.log 2>&1 &
+nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
 
 # Number of backend servers to start (default: 2)
 NUM_SERVERS=${1:-2}
