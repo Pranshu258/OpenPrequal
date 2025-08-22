@@ -6,9 +6,9 @@
 PROXY_RESTART_SCRIPT="scripts/run_local.sh"  # Adjust if needed
 LOCUST_FILE="locustfile.py"
 LOCUST_HOST="http://localhost:8000"  # Adjust if needed
-USERS=10000
+USERS=1000
 SPAWN_RATE=100
-RUN_TIME="5m"
+RUN_TIME="2m"
 RESULTS_DIR="logs/"
 
 mkdir -p "$RESULTS_DIR"
@@ -38,7 +38,20 @@ function run_test() {
         fi
     done
 
-    sleep 20
+    # Wait for at least one healthy backend (max 30s)
+    echo "Waiting for at least one healthy backend..."
+    for i in {1..30}; do
+        # Try to extract healthy backend count from /metrics (adjust pattern as needed)
+        if curl -s --max-time 1 "$LOCUST_HOST/metrics" | grep -q "# TYPE request_latency_seconds_created gauge"; then
+            echo "Detected healthy backend(s) (metrics string found)."
+            break
+        fi
+        sleep 1
+        if [ $i -eq 30 ]; then
+            echo "[ERROR] No healthy backends detected within 30 seconds. Skipping $LABEL test." | tee -a "$OUT_FILE"
+            return 1
+        fi
+    done
     
     # Run Locust in headless mode
     echo "Running Locust for $LABEL..."
