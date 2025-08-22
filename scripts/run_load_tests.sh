@@ -38,6 +38,8 @@ function run_test() {
         fi
     done
 
+    sleep 20
+    
     # Run Locust in headless mode
     echo "Running Locust for $LABEL..."
     if ! locust --processes -1 -f "$LOCUST_FILE" --headless -u $USERS -r $SPAWN_RATE --run-time $RUN_TIME --host "$LOCUST_HOST" --csv "$RESULTS_DIR/${LABEL}" > "$OUT_FILE" 2>&1; then
