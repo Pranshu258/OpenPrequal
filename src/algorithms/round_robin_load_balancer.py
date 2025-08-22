@@ -33,7 +33,7 @@ class RoundRobinLoadBalancer(LoadBalancer):
         """
         # Sort by (url, port) for stable, predictable order
         backends = sorted(
-            (b for b in self.registry.list_backends() if b.health),
+            (b for b in await self.registry.list_backends() if b.health),
             key=lambda b: (b.url, b.port),
         )
         if not backends:

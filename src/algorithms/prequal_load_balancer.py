@@ -110,7 +110,7 @@ class PrequalLoadBalancer(LoadBalancer):
         Select the next backend to route a request to, based on probe pool hot/cold classification and latency/rif.
         Also schedules probe tasks for two randomly selected backends.
         """
-        healthy_backends = [b for b in self._registry.list_backends() if b.health]
+        healthy_backends = [b for b in await self._registry.list_backends() if b.health]
         if not healthy_backends:
             logger.warning("No healthy backends available for prequal load balancer.")
             return None

@@ -1,7 +1,9 @@
+import asyncio
 import logging
 import time
 from typing import List
 
+from abstractions.registry import Registry
 from config.logging_config import setup_logging
 from contracts.backend import Backend
 
@@ -9,7 +11,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
-class BackendRegistry:
+class BackendRegistry(Registry):
     """
     Registry for managing backend service instances and their heartbeat status.
     """
@@ -25,6 +27,7 @@ class BackendRegistry:
         self._backends = {}
         self._last_heartbeat = {}  # (url, port) -> timestamp
         self.heartbeat_timeout = heartbeat_timeout
+        self._lock = asyncio.Lock()
         logger.info(
             f"BackendRegistry initialized with heartbeat_timeout={self.heartbeat_timeout}"
         )
@@ -40,9 +43,13 @@ class BackendRegistry:
             dict: Registration status and backend data.
         """
         key = (backend.url, backend.port)
-        self._backends[key] = backend
-        self._last_heartbeat[key] = time.time()
-        logger.info(f"Registered backend: {backend}")
+        async with self._lock:
+            self._backends[key] = backend
+            self._last_heartbeat[key] = time.time()
+            logger.info(f"Registered backend: {backend}")
+            logger.debug(
+                f"Current backends after register: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
+            )
         # else: keep the existing object (preserve probe state)
         return {"status": "registered", "backend": self._backends[key].model_dump()}
 
@@ -57,27 +64,43 @@ class BackendRegistry:
             dict: Unregistration status and backend data.
         """
         key = (backend.url, backend.port)
-        self._backends.pop(key, None)
-        self._last_heartbeat.pop(key, None)
-        logger.info(f"Unregistered backend: {backend}")
+        async with self._lock:
+            self._backends.pop(key, None)
+            self._last_heartbeat.pop(key, None)
+            logger.info(f"Unregistered backend: {backend}")
+            logger.debug(
+                f"Current backends after unregister: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
+            )
         return {"status": "unregistered", "backend": backend.model_dump()}
 
-    def list_backends(self) -> List[Backend]:
+    async def list_backends(self) -> List[Backend]:
         """
         List all registered backends, marking those with expired heartbeats as unhealthy.
 
         Returns:
             List[Backend]: List of backend instances.
         """
-        now = time.time()
-        timeout = self.heartbeat_timeout or 10  # default 10s if not set
-        for key, backend in self._backends.items():
-            last = self._last_heartbeat.get(key, 0)
-            if now - last > timeout:
-                if backend.health:
-                    logger.warning(
-                        f"Backend {backend} marked unhealthy due to heartbeat timeout."
-                    )
-                backend.health = False
-        logger.debug(f"Listing backends: {list(self._backends.values())}")
-        return list(self._backends.values())
+        async with self._lock:
+            now = time.time()
+            timeout = self.heartbeat_timeout or 10  # default 10s if not set
+            for key, backend in self._backends.items():
+                last = self._last_heartbeat.get(key, 0)
+                if now - last > timeout:
+                    if backend.health:
+                        logger.warning(
+                            f"Backend {backend} marked unhealthy due to heartbeat timeout."
+                        )
+                        logger.info(
+                            f"Health transition: {backend} healthy -> unhealthy"
+                        )
+                    backend.health = False
+                else:
+                    if not backend.health:
+                        logger.info(
+                            f"Health transition: {backend} unhealthy -> healthy"
+                        )
+                    backend.health = True
+            logger.debug(
+                f"Listing backends: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
+            )
+            return list(self._backends.values())

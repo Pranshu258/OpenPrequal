@@ -13,7 +13,7 @@ class LeastRIFPowerOfTwoChoicesLoadBalancer(LoadBalancer):
         self.registry = registry
 
     async def get_next_backend(self) -> Optional[str]:
-        backends = [b for b in self.registry.list_backends() if b.health]
+        backends = [b for b in await self.registry.list_backends() if b.health]
         if not backends:
             return None
         if len(backends) == 1:
