@@ -29,7 +29,7 @@ echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER
 nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" uvicorn proxy:app --port 8000 > logs/backend_8000.log 2>&1 &
 
 # Number of backend servers to start (default: 2)
-NUM_SERVERS=${1:-2}
+NUM_SERVERS=${1:-20}
 # Proxy URL (default: http://localhost:8000)
 PROXY_URL=${2:-http://localhost:8000}
 # Starting port (default: 8001)
