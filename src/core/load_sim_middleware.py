@@ -27,7 +27,7 @@ class LoadSimMiddleware(BaseHTTPMiddleware):
         mean = 0.05  # 50ms
         stddev = 0.01  # 10ms
         base_latency = max(0, random.gauss(mean, stddev))
-        jitter = random.uniform(0, rif_count * 0.001)  # up to 1ms per RIF as jitter
+        jitter = random.uniform(0, rif_count * 0.002)  # up to 1ms per RIF as jitter
         latency = base_latency + jitter
         await asyncio.sleep(latency)
         response = await call_next(request)
