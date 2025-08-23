@@ -33,24 +33,39 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_history = set()
         self._request_timestamps = []  # For RPS tracking
         self._last_probe_time = {}  # backend_id -> last probe timestamp
+        # cache for median RIF values per backend
+        self._rif_median_cache = {}
+        # track last RIF info (count, last_value) for cache invalidation
+        self._rif_last_info = {}
         logger.info("PrequalLoadBalancer initialized.")
 
     async def _classify_backends(self, backends):
-        """Classify backends as hot or cold based on RIF values in parallel."""
-        # fetch all RIFs concurrently
+        """Classify backends as hot or cold, returning RIF history map to reuse."""
+        # fetch all RIFs concurrently and build map
         rif_tasks = [self._probe_pool.get_rif_values(b.url) for b in backends]
         rifs_list = await asyncio.gather(*rif_tasks)
+        rifs_map = {b.url: rifs for b, rifs in zip(backends, rifs_list)}
         cold, hot = [], []
-        for backend, rifs in zip(backends, rifs_list):
+        for backend in backends:
+            rifs = rifs_map[backend.url]
             if not rifs:
                 cold.append(backend)
                 continue
-            curr, med = rifs[-1], median(rifs)
+            count, last = len(rifs), rifs[-1]
+            # check cache validity
+            last_info = self._rif_last_info.get(backend.url)
+            if last_info == (count, last) and backend.url in self._rif_median_cache:
+                med = self._rif_median_cache[backend.url]
+            else:
+                med = median(rifs)
+                self._rif_median_cache[backend.url] = med
+                self._rif_last_info[backend.url] = (count, last)
+            curr = last
             (cold if curr < med else hot).append(backend)
-        return cold, hot
+        return cold, hot, rifs_map
 
-    async def _select_backend(self, cold, hot):
-        """Select backend from cold (lowest latency) or hot (lowest current rif)."""
+    async def _select_backend(self, cold, hot, rifs_map=None):
+        """Select backend from cold (lowest latency) or hot (lowest current rif), reusing RIF map if provided."""
         if cold:
             # fetch latencies concurrently
             lat_tasks = [self._probe_pool.get_current_latency(b.url) for b in cold]
@@ -61,10 +76,15 @@ class PrequalLoadBalancer(LoadBalancer):
             selected = random.choice(candidates)
             logger.info(f"Selected cold backend (lowest latency): {selected.url}")
         else:
-            # fetch current RIFs concurrently
-            rif_tasks = [self._probe_pool.get_rif_values(b.url) for b in hot]
-            rifs_list = await asyncio.gather(*rif_tasks)
-            cur_rifs = [vals[-1] if vals else float("inf") for vals in rifs_list]
+            # reuse RIF values from previous classification if available
+            if rifs_map is not None:
+                cur_rifs = [
+                    rifs_map.get(b.url, [None])[-1] or float("inf") for b in hot
+                ]
+            else:
+                rif_tasks = [self._probe_pool.get_rif_values(b.url) for b in hot]
+                rifs_list = await asyncio.gather(*rif_tasks)
+                cur_rifs = [vals[-1] if vals else float("inf") for vals in rifs_list]
             best = min(cur_rifs)
             candidates = [b for b, r in zip(hot, cur_rifs) if r == best]
             selected = random.choice(candidates)
@@ -128,8 +148,8 @@ class PrequalLoadBalancer(LoadBalancer):
             logger.warning("No healthy backends available for prequal load balancer.")
             return None
 
-        cold, hot = await self._classify_backends(healthy_backends)
-        selected = await self._select_backend(cold, hot)
+        cold, hot, rifs_map = await self._classify_backends(healthy_backends)
+        selected = await self._select_backend(cold, hot, rifs_map)
         # Schedule probe tasks in background without blocking
         asyncio.create_task(self._schedule_probe_tasks(healthy_backends))
         return selected.url
