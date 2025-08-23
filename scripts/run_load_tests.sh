@@ -75,6 +75,6 @@ run_test "default" "prequal" || echo "[WARN] prequal test failed."
 FINAL_RESULTS_DIR="results/"
 mkdir -p "$FINAL_RESULTS_DIR"
 find "$RESULTS_DIR" -name "*results.csv" -exec mv {} "$FINAL_RESULTS_DIR" \;
-find "$RESULTS_DIR" -name "locust_backend_distribution_*" -exec mv {} "$FINAL_RESULTS_DIR" \;
+find "$RESULTS_DIR" -name "*locust_backend_distribution.log" -exec mv {} "$FINAL_RESULTS_DIR" \;
 
 echo "\nLoad test comparison complete. Check $RESULTS_DIR for results."
