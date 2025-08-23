@@ -47,5 +47,12 @@
       "total_requests": 38353
     }
   },
+  "plots": [
+    "results/random_requests_per_s.png",
+    "results/random_failures_per_s.png",
+    "results/random_percentiles.png",
+    "results/random_total_requests.png",
+    "results/random_latency.png"
+  ],
   "total": 38353
 }

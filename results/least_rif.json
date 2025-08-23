@@ -30,5 +30,12 @@
       "total_requests": 38166
     }
   },
+  "plots": [
+    "results/least_rif_requests_per_s.png",
+    "results/least_rif_failures_per_s.png",
+    "results/least_rif_percentiles.png",
+    "results/least_rif_total_requests.png",
+    "results/least_rif_latency.png"
+  ],
   "total": 38166
 }

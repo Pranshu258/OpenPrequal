@@ -48,5 +48,12 @@
       "total_requests": 38087
     }
   },
+  "plots": [
+    "results/prequal_requests_per_s.png",
+    "results/prequal_failures_per_s.png",
+    "results/prequal_percentiles.png",
+    "results/prequal_total_requests.png",
+    "results/prequal_latency.png"
+  ],
   "total": 44211
 }

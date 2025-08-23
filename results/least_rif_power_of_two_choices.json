@@ -47,5 +47,12 @@
       "total_requests": 38289
     }
   },
+  "plots": [
+    "results/least_rif_power_of_two_choices_requests_per_s.png",
+    "results/least_rif_power_of_two_choices_failures_per_s.png",
+    "results/least_rif_power_of_two_choices_percentiles.png",
+    "results/least_rif_power_of_two_choices_total_requests.png",
+    "results/least_rif_power_of_two_choices_latency.png"
+  ],
   "total": 38289
 }
