@@ -39,9 +39,6 @@ def parse_results_csv(results_csv_path):
                     main_metrics = lines[i]
                     break
 
-        print("m", main_metrics)
-        print("p", percentiles_metrics)
-
         def parse_main_agg_row(row):
             # Example row:
             # '         Aggregated                                                                     38218     0(0.00%) |     63      13     602     57 |  318.25        0.00\n'
@@ -110,11 +107,9 @@ def parse_results_csv(results_csv_path):
                 "total_requests": int(p_values[11]),
             }
 
-        print(metrics)
         if percentiles_metrics:
             metrics["percentiles"] = parse_percentiles_agg_row(percentiles_metrics)
 
-        print(metrics)
         if main_metrics:
             metrics["summary"] = parse_main_agg_row(main_metrics)
 
