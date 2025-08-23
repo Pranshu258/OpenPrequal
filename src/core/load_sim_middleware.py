@@ -15,6 +15,7 @@ class LoadSimMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, metrics_manager: MetricsManager):
         super().__init__(app)
         self.metrics_manager = metrics_manager
+        self.jitter_mul = random.uniform(0, 3)
 
     async def dispatch(self, request: Request, call_next):
         rif_count = int(self.metrics_manager.get_in_flight())
@@ -27,8 +28,8 @@ class LoadSimMiddleware(BaseHTTPMiddleware):
         mean = 0.05  # 50ms
         stddev = 0.01  # 10ms
         base_latency = max(0, random.gauss(mean, stddev))
-        jitter = random.uniform(0, rif_count * 0.002)  # up to 1ms per RIF as jitter
-        latency = base_latency + jitter
+        jitter = random.uniform(0, rif_count * 0.001)  # up to 1ms per RIF as jitter
+        latency = self.jitter_mul * (base_latency + jitter)
         await asyncio.sleep(latency)
         response = await call_next(request)
         return response
