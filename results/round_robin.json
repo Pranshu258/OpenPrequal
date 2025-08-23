@@ -52,7 +52,8 @@
     "results/round_robin_failures_per_s.png",
     "results/round_robin_percentiles.png",
     "results/round_robin_total_requests.png",
-    "results/round_robin_latency.png"
+    "results/round_robin_latency.png",
+    "results/round_robin_backend_distribution_pie.png"
   ],
   "total": 38091
 }

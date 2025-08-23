@@ -39,7 +39,8 @@
     "results/least_latency_failures_per_s.png",
     "results/least_latency_percentiles.png",
     "results/least_latency_total_requests.png",
-    "results/least_latency_latency.png"
+    "results/least_latency_latency.png",
+    "results/least_latency_backend_distribution_pie.png"
   ],
   "total": 44442
 }

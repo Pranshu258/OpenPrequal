@@ -56,6 +56,11 @@ def parse_results_csv(stats_csv_path):
 def summarize_backend_distribution(logs_dir, results_dir):
     os.makedirs(results_dir, exist_ok=True)
     log_files = glob.glob(os.path.join(logs_dir, "*_locust_backend_distribution.log"))
+    # Collect average latency for all algorithms for comparison plot
+    avg_latencies = {}
+    median_latencies = {}
+    p90_latencies = {}
+    all_results = []
     for log_file in log_files:
         algorithm = os.path.basename(log_file).split(
             "_locust_backend_distribution.log"
@@ -66,7 +71,6 @@ def summarize_backend_distribution(logs_dir, results_dir):
                 backend = line.strip()
                 if backend:
                     counter[backend] += 1
-        # Parse corresponding stats.csv file instead of results.csv
         stats_csv = os.path.join(logs_dir, f"{algorithm}_stats.csv")
         metrics = parse_results_csv(stats_csv) if os.path.exists(stats_csv) else {}
 
@@ -93,7 +97,6 @@ def summarize_backend_distribution(logs_dir, results_dir):
                             reqs_per_s.append(float(row["Requests/s"]))
                             failures_per_s.append(float(row["Failures/s"]))
 
-                            # Some percentiles may be 'N/A' if no data
                             def safe_float(val):
                                 try:
                                     return float(val)
@@ -123,14 +126,11 @@ def summarize_backend_distribution(logs_dir, results_dir):
                             )
                         except Exception:
                             continue
-            # Only plot if we have at least 2 points
             if len(timestamps) > 1:
                 import datetime
 
-                # Convert timestamps to seconds since start
                 t0 = timestamps[0]
                 times = [(t - t0) for t in timestamps]
-                # Plot Requests/s
                 plt.figure()
                 plt.plot(times, reqs_per_s, label="Requests/s")
                 plt.xlabel("Time (s)")
@@ -142,7 +142,6 @@ def summarize_backend_distribution(logs_dir, results_dir):
                 plt.close()
                 plots.append(plot_path)
 
-                # Plot Failures/s
                 plt.figure()
                 plt.plot(times, failures_per_s, label="Failures/s", color="red")
                 plt.xlabel("Time (s)")
@@ -154,7 +153,6 @@ def summarize_backend_distribution(logs_dir, results_dir):
                 plt.close()
                 plots.append(plot_path)
 
-                # Plot percentiles
                 plt.figure()
                 if any(x is not None for x in p50):
                     plt.plot(
@@ -183,7 +181,6 @@ def summarize_backend_distribution(logs_dir, results_dir):
                 plt.close()
                 plots.append(plot_path)
 
-                # Plot total requests
                 plt.figure()
                 plt.plot(times, total_requests, label="Total Requests")
                 plt.xlabel("Time (s)")
@@ -195,7 +192,6 @@ def summarize_backend_distribution(logs_dir, results_dir):
                 plt.close()
                 plots.append(plot_path)
 
-                # Plot average and median latency
                 plt.figure()
                 if any(x is not None for x in avg_latency):
                     plt.plot(
@@ -217,6 +213,52 @@ def summarize_backend_distribution(logs_dir, results_dir):
                 plt.savefig(plot_path)
                 plt.close()
                 plots.append(plot_path)
+        # Add pie chart for backend distribution
+        if counter:
+            plt.figure()
+            labels = list(counter.keys())
+            sizes = list(counter.values())
+
+            def group_small_slices(labels, sizes, threshold=0.02):
+                total = sum(sizes)
+                new_labels = []
+                new_sizes = []
+                other = 0
+                for l, s in zip(labels, sizes):
+                    if total > 0 and s / total < threshold:
+                        other += s
+                    else:
+                        new_labels.append(l)
+                        new_sizes.append(s)
+                if other > 0:
+                    new_labels.append("Other")
+                    new_sizes.append(other)
+                return new_labels, new_sizes
+
+            pie_labels, pie_sizes = group_small_slices(labels, sizes)
+            plt.pie(pie_sizes, labels=pie_labels, autopct="%1.1f%%", startangle=140)
+            plt.axis("equal")
+            plt.title(f"{algorithm} - Backend Distribution")
+            pie_path = os.path.join(
+                results_dir, f"{algorithm}_backend_distribution_pie.png"
+            )
+            plt.savefig(pie_path)
+            plt.close()
+            plots.append(pie_path)
+
+        # Collect average, median, and p90 latency for comparison
+        avg_latency_val = None
+        median_latency_val = None
+        p90_latency_val = None
+        if metrics and "summary" in metrics:
+            avg_latency_val = metrics["summary"].get("latency_avg")
+            median_latency_val = metrics["summary"].get("latency_median")
+        if metrics and "percentiles" in metrics:
+            p90_latency_val = metrics["percentiles"].get("p90")
+        avg_latencies[algorithm] = avg_latency_val
+        median_latencies[algorithm] = median_latency_val
+        p90_latencies[algorithm] = p90_latency_val
+
         result = {
             "algorithm": algorithm,
             "total": sum(counter.values()),
@@ -224,12 +266,59 @@ def summarize_backend_distribution(logs_dir, results_dir):
             "metrics": metrics,
             "plots": plots,
         }
+        all_results.append(result)
         result_file = os.path.join(results_dir, f"{algorithm}.json")
         with open(result_file, "w") as out:
             import json
 
             json.dump(result, out, indent=2, sort_keys=True)
         print(f"Wrote summary for {algorithm} to {result_file}")
+
+    # After all algorithms, plot latency comparisons
+    if avg_latencies:
+        # Average latency
+        plt.figure()
+        algos = list(avg_latencies.keys())
+        latencies = [avg_latencies[a] for a in algos]
+        plt.bar(algos, latencies, color="skyblue")
+        plt.ylabel("Average Latency (ms)")
+        plt.xlabel("Algorithm")
+        plt.title("Average Latency Comparison Across Algorithms")
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        latency_bar_path = os.path.join(results_dir, "average_latency_comparison.png")
+        plt.savefig(latency_bar_path)
+        plt.close()
+
+    if median_latencies:
+        # Median latency
+        plt.figure()
+        algos = list(median_latencies.keys())
+        medians = [median_latencies[a] for a in algos]
+        plt.bar(algos, medians, color="orange")
+        plt.ylabel("Median Latency (ms)")
+        plt.xlabel("Algorithm")
+        plt.title("Median Latency Comparison Across Algorithms")
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        median_bar_path = os.path.join(results_dir, "median_latency_comparison.png")
+        plt.savefig(median_bar_path)
+        plt.close()
+
+    if p90_latencies:
+        # p90 latency
+        plt.figure()
+        algos = list(p90_latencies.keys())
+        p90s = [p90_latencies[a] for a in algos]
+        plt.bar(algos, p90s, color="green")
+        plt.ylabel("p90 Latency (ms)")
+        plt.xlabel("Algorithm")
+        plt.title("p90 Latency Comparison Across Algorithms")
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        p90_bar_path = os.path.join(results_dir, "p90_latency_comparison.png")
+        plt.savefig(p90_bar_path)
+        plt.close()
 
 
 if __name__ == "__main__":

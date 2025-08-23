@@ -32,6 +32,7 @@ class WebsiteUser(FastHttpUser):
                 backend_id = response.headers.get("X-Backend-Id", "unknown")
             else:
                 backend_id = "unknown"
-            # Log the backend used for this request on a new line
+            # Log the backend used for this request with a timestamp
+            now = datetime.now().timestamp()
             with open(self.log_file, "a") as f:
-                f.write(backend_id + "\n")
+                f.write(f"{now},{backend_id}\n")

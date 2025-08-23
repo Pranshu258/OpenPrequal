@@ -53,7 +53,8 @@
     "results/prequal_failures_per_s.png",
     "results/prequal_percentiles.png",
     "results/prequal_total_requests.png",
-    "results/prequal_latency.png"
+    "results/prequal_latency.png",
+    "results/prequal_backend_distribution_pie.png"
   ],
   "total": 44211
 }
