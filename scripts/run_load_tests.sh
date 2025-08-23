@@ -10,9 +10,10 @@ USERS=1000
 SPAWN_RATE=100
 RUN_TIME="2m"
 RESULTS_DIR="logs/"
+FINAL_RESULTS_DIR="results/"
 
 mkdir -p "$RESULTS_DIR"
-
+mkdir -p "$FINAL_RESULTS_DIR"
 
 function run_test() {
     LB_CLASS=$1
@@ -70,11 +71,7 @@ run_test "algorithms.least_rif_load_balancer.LeastRIFLoadBalancer" "least_rif" |
 run_test "algorithms.least_rif_power_of_two_choices_load_balancer.LeastRIFPowerOfTwoChoicesLoadBalancer" "least_rif_power_of_two_choices" || echo "[WARN] least_rif_power_of_two_choices test failed."
 run_test "default" "prequal" || echo "[WARN] prequal test failed."
 
-
-# Move all *results.csv and locust_backend_distribution_* files to results/ folder
-FINAL_RESULTS_DIR="results/"
-mkdir -p "$FINAL_RESULTS_DIR"
-find "$RESULTS_DIR" -name "*results.csv" -exec mv {} "$FINAL_RESULTS_DIR" \;
-find "$RESULTS_DIR" -name "*locust_backend_distribution.log" -exec mv {} "$FINAL_RESULTS_DIR" \;
+echo "\nSummarizing backend distribution logs..."
+python3 scripts/summarize_locust_metrics.py --logs-dir "$RESULTS_DIR" --results-dir "$FINAL_RESULTS_DIR"
 
 echo "\nLoad test comparison complete. Check $RESULTS_DIR for results."
