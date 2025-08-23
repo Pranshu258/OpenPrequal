@@ -144,7 +144,7 @@ def summarize_backend_distribution(logs_dir, results_dir):
         with open(result_file, "w") as out:
             import json
 
-            json.dump(result, out, indent=2)
+            json.dump(result, out, indent=2, sort_keys=True)
         print(f"Wrote summary for {algorithm} to {result_file}")
 
 

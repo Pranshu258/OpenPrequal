@@ -1,30 +1,30 @@
 {
   "algorithm": "least_latency_power_of_two_choices",
-  "total": 38157,
   "distribution": {
-    "http://localhost:8012": 759,
-    "http://localhost:8017": 2815,
-    "http://localhost:8019": 1682,
-    "http://localhost:8013": 2156,
+    "http://localhost:8001": 1986,
     "http://localhost:8002": 1267,
-    "http://localhost:8011": 2551,
+    "http://localhost:8003": 1561,
     "http://localhost:8004": 1000,
-    "http://localhost:8015": 2560,
-    "http://localhost:8014": 2134,
-    "http://localhost:8018": 2517,
+    "http://localhost:8005": 2082,
     "http://localhost:8006": 3125,
     "http://localhost:8007": 946,
-    "http://localhost:8020": 1575,
     "http://localhost:8008": 1811,
-    "http://localhost:8003": 1561,
-    "http://localhost:8005": 2082,
-    "http://localhost:8016": 1073,
     "http://localhost:8009": 1633,
     "http://localhost:8010": 2924,
-    "http://localhost:8001": 1986
+    "http://localhost:8011": 2551,
+    "http://localhost:8012": 759,
+    "http://localhost:8013": 2156,
+    "http://localhost:8014": 2134,
+    "http://localhost:8015": 2560,
+    "http://localhost:8016": 1073,
+    "http://localhost:8017": 2815,
+    "http://localhost:8018": 2517,
+    "http://localhost:8019": 1682,
+    "http://localhost:8020": 1575
   },
   "metrics": {
     "percentiles": {
+      "p100": 460.0,
       "p50": 59.0,
       "p66": 64.0,
       "p75": 67.0,
@@ -35,20 +35,20 @@
       "p99": 260.0,
       "p99_9": 380.0,
       "p99_99": 450.0,
-      "p100": 460.0,
       "total_requests": 38157
     },
     "summary": {
-      "total_requests": 38157,
-      "total_failures": 0,
-      "success_rate": 100.0,
       "failure_rate": 0.0,
+      "failures_per_second": 0.0,
       "latency_avg": 64.0,
-      "latency_min": 17.0,
       "latency_max": 459.0,
       "latency_median": 59.0,
+      "latency_min": 17.0,
       "requests_per_second": 317.74,
-      "failures_per_second": 0.0
+      "success_rate": 100.0,
+      "total_failures": 0,
+      "total_requests": 38157
     }
-  }
+  },
+  "total": 38157
 }

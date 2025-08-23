@@ -1,30 +1,30 @@
 {
   "algorithm": "round_robin",
-  "total": 41862,
   "distribution": {
-    "http://localhost:8020": 2217,
-    "http://localhost:8008": 2217,
-    "http://localhost:8018": 2217,
-    "http://localhost:8006": 2218,
-    "http://localhost:8019": 2219,
-    "http://localhost:8013": 2217,
-    "http://localhost:8005": 2217,
+    "http://localhost:8001": 1501,
     "http://localhost:8002": 1759,
-    "http://localhost:8017": 2217,
+    "http://localhost:8003": 1956,
     "http://localhost:8004": 2215,
-    "http://localhost:8016": 2217,
+    "http://localhost:8005": 2217,
+    "http://localhost:8006": 2218,
+    "http://localhost:8007": 1956,
+    "http://localhost:8008": 2217,
     "http://localhost:8009": 2217,
+    "http://localhost:8010": 1956,
     "http://localhost:8011": 2217,
+    "http://localhost:8012": 1956,
+    "http://localhost:8013": 2217,
     "http://localhost:8014": 2217,
     "http://localhost:8015": 1956,
-    "http://localhost:8007": 1956,
-    "http://localhost:8010": 1956,
-    "http://localhost:8012": 1956,
-    "http://localhost:8003": 1956,
-    "http://localhost:8001": 1501
+    "http://localhost:8016": 2217,
+    "http://localhost:8017": 2217,
+    "http://localhost:8018": 2217,
+    "http://localhost:8019": 2219,
+    "http://localhost:8020": 2217
   },
   "metrics": {
     "percentiles": {
+      "p100": 400.0,
       "p50": 58.0,
       "p66": 63.0,
       "p75": 66.0,
@@ -35,20 +35,20 @@
       "p99": 210.0,
       "p99_9": 330.0,
       "p99_99": 400.0,
-      "p100": 400.0,
       "total_requests": 38209
     },
     "summary": {
-      "total_requests": 38209,
-      "total_failures": 0,
-      "success_rate": 100.0,
       "failure_rate": 0.0,
+      "failures_per_second": 0.0,
       "latency_avg": 63.0,
-      "latency_min": 14.0,
       "latency_max": 404.0,
       "latency_median": 58.0,
+      "latency_min": 14.0,
       "requests_per_second": 318.19,
-      "failures_per_second": 0.0
+      "success_rate": 100.0,
+      "total_failures": 0,
+      "total_requests": 38209
     }
-  }
+  },
+  "total": 41862
 }

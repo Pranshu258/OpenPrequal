@@ -1,12 +1,12 @@
 {
   "algorithm": "least_rif",
-  "total": 5589,
   "distribution": {
     "http://localhost:8005": 2092,
     "unknown": 3497
   },
   "metrics": {
     "percentiles": {
+      "p100": 48000.0,
       "p50": 23000.0,
       "p66": 25000.0,
       "p75": 25000.0,
@@ -17,20 +17,20 @@
       "p99": 28000.0,
       "p99_9": 46000.0,
       "p99_99": 48000.0,
-      "p100": 48000.0,
       "total_requests": 5589
     },
     "summary": {
-      "total_requests": 5589,
-      "total_failures": 3497,
-      "success_rate": 37.43,
       "failure_rate": 62.57,
+      "failures_per_second": 29.12,
       "latency_avg": 15263.0,
-      "latency_min": 19.0,
       "latency_max": 48421.0,
       "latency_median": 23000.0,
+      "latency_min": 19.0,
       "requests_per_second": 46.55,
-      "failures_per_second": 29.12
+      "success_rate": 37.43,
+      "total_failures": 3497,
+      "total_requests": 5589
     }
-  }
+  },
+  "total": 5589
 }

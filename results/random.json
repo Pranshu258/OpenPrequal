@@ -1,30 +1,30 @@
 {
   "algorithm": "random",
-  "total": 38303,
   "distribution": {
+    "http://localhost:8001": 1519,
     "http://localhost:8002": 2311,
-    "http://localhost:8015": 2321,
-    "http://localhost:8008": 2303,
-    "http://localhost:8013": 2292,
-    "http://localhost:8014": 2350,
-    "http://localhost:8018": 2326,
-    "http://localhost:8012": 2364,
-    "http://localhost:8019": 2286,
-    "http://localhost:8017": 2378,
-    "http://localhost:8020": 2258,
+    "http://localhost:8003": 1507,
+    "http://localhost:8004": 1465,
+    "http://localhost:8005": 1499,
+    "http://localhost:8006": 1544,
     "http://localhost:8007": 1512,
+    "http://localhost:8008": 2303,
     "http://localhost:8009": 1477,
     "http://localhost:8010": 1529,
     "http://localhost:8011": 1536,
-    "http://localhost:8003": 1507,
-    "http://localhost:8001": 1519,
-    "http://localhost:8005": 1499,
+    "http://localhost:8012": 2364,
+    "http://localhost:8013": 2292,
+    "http://localhost:8014": 2350,
+    "http://localhost:8015": 2321,
     "http://localhost:8016": 1526,
-    "http://localhost:8006": 1544,
-    "http://localhost:8004": 1465
+    "http://localhost:8017": 2378,
+    "http://localhost:8018": 2326,
+    "http://localhost:8019": 2286,
+    "http://localhost:8020": 2258
   },
   "metrics": {
     "percentiles": {
+      "p100": 580.0,
       "p50": 58.0,
       "p66": 63.0,
       "p75": 67.0,
@@ -35,20 +35,20 @@
       "p99": 290.0,
       "p99_9": 510.0,
       "p99_99": 560.0,
-      "p100": 580.0,
       "total_requests": 38303
     },
     "summary": {
-      "total_requests": 38303,
-      "total_failures": 0,
-      "success_rate": 100.0,
       "failure_rate": 0.0,
+      "failures_per_second": 0.0,
       "latency_avg": 66.0,
-      "latency_min": 17.0,
       "latency_max": 582.0,
       "latency_median": 58.0,
+      "latency_min": 17.0,
       "requests_per_second": 318.97,
-      "failures_per_second": 0.0
+      "success_rate": 100.0,
+      "total_failures": 0,
+      "total_requests": 38303
     }
-  }
+  },
+  "total": 38303
 }
