@@ -68,7 +68,7 @@ def summarize_backend_distribution(logs_dir, results_dir):
         counter = Counter()
         with open(log_file, "r") as f:
             for line in f:
-                backend = line.strip()
+                backend = line.strip().split(",")[1]
                 if backend:
                     counter[backend] += 1
         stats_csv = os.path.join(logs_dir, f"{algorithm}_stats.csv")

@@ -1,50 +1,51 @@
 {
   "algorithm": "least_rif_power_of_two_choices",
   "distribution": {
-    "http://localhost:8001": 1574,
-    "http://localhost:8002": 2039,
-    "http://localhost:8003": 1935,
-    "http://localhost:8004": 1921,
-    "http://localhost:8005": 1429,
-    "http://localhost:8006": 2498,
-    "http://localhost:8007": 1553,
-    "http://localhost:8008": 2152,
-    "http://localhost:8009": 2166,
-    "http://localhost:8010": 1546,
-    "http://localhost:8011": 1609,
-    "http://localhost:8012": 1822,
-    "http://localhost:8013": 2181,
-    "http://localhost:8014": 2173,
-    "http://localhost:8015": 2340,
-    "http://localhost:8016": 2442,
-    "http://localhost:8017": 1832,
-    "http://localhost:8018": 1988,
-    "http://localhost:8019": 1712,
-    "http://localhost:8020": 1377
+    "http://localhost:8001": 13930,
+    "http://localhost:8002": 13531,
+    "http://localhost:8003": 12228,
+    "http://localhost:8004": 12361,
+    "http://localhost:8005": 16026,
+    "http://localhost:8006": 14086,
+    "http://localhost:8007": 12182,
+    "http://localhost:8008": 15962,
+    "http://localhost:8009": 15779,
+    "http://localhost:8010": 14172,
+    "http://localhost:8011": 14906,
+    "http://localhost:8012": 14292,
+    "http://localhost:8013": 14796,
+    "http://localhost:8014": 13057,
+    "http://localhost:8015": 13887,
+    "http://localhost:8016": 13448,
+    "http://localhost:8017": 14169,
+    "http://localhost:8018": 14535,
+    "http://localhost:8019": 16347,
+    "http://localhost:8020": 17949,
+    "unknown": 3113
   },
   "metrics": {
     "percentiles": {
-      "p100": 380.0,
-      "p50": 58.0,
-      "p66": 63.0,
-      "p75": 66.0,
-      "p80": 68.0,
-      "p90": 75.0,
-      "p95": 85.0,
-      "p98": 150.0,
-      "p99": 210.0,
-      "p99_9": 320.0,
-      "p99_99": 370.0
+      "p100": 440.0,
+      "p50": 59.0,
+      "p66": 64.0,
+      "p75": 67.0,
+      "p80": 69.0,
+      "p90": 74.0,
+      "p95": 80.0,
+      "p98": 92.0,
+      "p99": 130.0,
+      "p99_9": 270.0,
+      "p99_99": 390.0
     },
     "summary": {
       "failures_per_second": 0.0,
-      "latency_avg": 62.42761324164123,
-      "latency_max": 380.7243750052294,
-      "latency_median": 58.0,
-      "latency_min": 16.26974999817321,
-      "requests_per_second": 318.8476297437559,
+      "latency_avg": 60.79871336154258,
+      "latency_max": 442.053874998237,
+      "latency_median": 59.0,
+      "latency_min": 15.224666996800806,
+      "requests_per_second": 324.83828211755826,
       "total_failures": 0,
-      "total_requests": 38289
+      "total_requests": 155948
     }
   },
   "plots": [
@@ -55,5 +56,5 @@
     "results/least_rif_power_of_two_choices_latency.png",
     "results/least_rif_power_of_two_choices_backend_distribution_pie.png"
   ],
-  "total": 38289
+  "total": 290756
 }

@@ -8,7 +8,7 @@ LOCUST_FILE="locustfile.py"
 LOCUST_HOST="http://localhost:8000"  # Adjust if needed
 USERS=1000
 SPAWN_RATE=100
-RUN_TIME="2m"
+RUN_TIME="8m"
 RESULTS_DIR="logs/"
 FINAL_RESULTS_DIR="results/"
 
@@ -63,13 +63,13 @@ function run_test() {
     echo "$LABEL test complete. Results saved to $OUT_FILE"
 }
 
-run_test "algorithms.round_robin_load_balancer.RoundRobinLoadBalancer" "round_robin" || echo "[WARN] round_robin test failed."
-run_test "algorithms.random_load_balancer.RandomLoadBalancer" "random" || echo "[WARN] random test failed."
-run_test "algorithms.least_latency_load_balancer.LeastLatencyLoadBalancer" "least_latency" || echo "[WARN] least_latency test failed."
-run_test "algorithms.least_latency_power_of_two_choices_load_balancer.LeastLatencyPowerOfTwoChoicesLoadBalancer" "least_latency_power_of_two_choices" || echo "[WARN] least_latency_power_of_two_choices test failed."
-run_test "algorithms.least_rif_load_balancer.LeastRIFLoadBalancer" "least_rif" || echo "[WARN] least_rif test failed."
+# run_test "algorithms.round_robin_load_balancer.RoundRobinLoadBalancer" "round_robin" || echo "[WARN] round_robin test failed."
+# run_test "algorithms.random_load_balancer.RandomLoadBalancer" "random" || echo "[WARN] random test failed."
+# run_test "algorithms.least_latency_load_balancer.LeastLatencyLoadBalancer" "least_latency" || echo "[WARN] least_latency test failed."
+# run_test "algorithms.least_latency_power_of_two_choices_load_balancer.LeastLatencyPowerOfTwoChoicesLoadBalancer" "least_latency_power_of_two_choices" || echo "[WARN] least_latency_power_of_two_choices test failed."
+# run_test "algorithms.least_rif_load_balancer.LeastRIFLoadBalancer" "least_rif" || echo "[WARN] least_rif test failed."
 run_test "algorithms.least_rif_power_of_two_choices_load_balancer.LeastRIFPowerOfTwoChoicesLoadBalancer" "least_rif_power_of_two_choices" || echo "[WARN] least_rif_power_of_two_choices test failed."
-run_test "default" "prequal" || echo "[WARN] prequal test failed."
+# run_test "default" "prequal" || echo "[WARN] prequal test failed."
 
 echo "\nSummarizing backend distribution logs..."
 python3 scripts/summarize_locust_metrics.py --logs-dir "$RESULTS_DIR" --results-dir "$FINAL_RESULTS_DIR"
