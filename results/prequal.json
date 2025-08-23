@@ -35,18 +35,15 @@
       "p98": 190.0,
       "p99": 240.0,
       "p99_9": 580.0,
-      "p99_99": 670.0,
-      "total_requests": 38087
+      "p99_99": 670.0
     },
     "summary": {
-      "failure_rate": 0.0,
       "failures_per_second": 0.0,
-      "latency_avg": 70.0,
-      "latency_max": 676.0,
+      "latency_avg": 70.25522775024352,
+      "latency_max": 676.4814170019235,
       "latency_median": 64.0,
-      "latency_min": 15.0,
-      "requests_per_second": 317.17,
-      "success_rate": 100.0,
+      "latency_min": 15.42045899986988,
+      "requests_per_second": 317.17278554011045,
       "total_failures": 0,
       "total_requests": 38087
     }
