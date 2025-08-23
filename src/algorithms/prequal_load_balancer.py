@@ -38,6 +38,8 @@ class PrequalLoadBalancer(LoadBalancer):
         # track last RIF info (count, last_value) for cache invalidation
         self._rif_last_info = {}
         logger.info("PrequalLoadBalancer initialized.")
+        # start background probe scheduler loop
+        self._scheduler_task = asyncio.create_task(self._probe_scheduler_loop())
 
     async def _classify_backends(self, backends):
         """Classify backends as hot or cold, returning RIF history map to reuse."""
@@ -138,6 +140,16 @@ class PrequalLoadBalancer(LoadBalancer):
         else:
             logger.debug(f"No probe scheduled (R={R:.3f}, RPS={rps:.2f})")
 
+    async def _probe_scheduler_loop(self):
+        """
+        Background task to periodically invoke probe scheduling.
+        """
+        while True:
+            backends = [b for b in await self._registry.list_backends() if b.health]
+            await self._schedule_probe_tasks(backends)
+            # wait before next scheduling cycle
+            await asyncio.sleep(0.02)
+
     async def get_next_backend(self) -> Optional[str]:
         """
         Select the next backend to route a request to, based on probe pool hot/cold classification and latency/rif.
@@ -150,6 +162,4 @@ class PrequalLoadBalancer(LoadBalancer):
 
         cold, hot, rifs_map = await self._classify_backends(healthy_backends)
         selected = await self._select_backend(cold, hot, rifs_map)
-        # Schedule probe tasks in background without blocking
-        asyncio.create_task(self._schedule_probe_tasks(healthy_backends))
         return selected.url
