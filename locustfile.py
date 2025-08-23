@@ -16,6 +16,7 @@ def get_log_file_name():
 
 class WebsiteUser(FastHttpUser):
     wait_time = between(1, 5)
+    request_timeout = (5.0, 5.0)
 
     def on_start(self):
         # Use a single base log file for all requests

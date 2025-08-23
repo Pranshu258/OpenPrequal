@@ -62,12 +62,15 @@ class ProxyHandler:
                 headers=headers,
                 content=body,
                 params=request.query_params,
-                timeout=10.0,
+                timeout=httpx.Timeout(10.0, read=15.0),
             )
             logger.info(f"Received response from backend: {resp.status_code}")
+        except httpx.TimeoutException as e:
+            logger.error("Upstream timeout error", exc_info=e)
+            return Response(content=f"Upstream timeout: {str(e)}", status_code=504)
         except httpx.RequestError as e:
-            logger.error(f"Upstream error: {e}")
-            return Response(content=f"Upstream error: {e}", status_code=502)
+            logger.error("Upstream request error", exc_info=e)
+            return Response(content=f"Upstream error: {repr(e)}", status_code=502)
 
         custom_response_hook = getattr(Config, "CUSTOM_RESPONSE_HOOK", None)
         if custom_response_hook:
