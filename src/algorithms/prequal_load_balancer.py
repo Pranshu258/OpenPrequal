@@ -10,9 +10,12 @@ from abstractions.registry import Registry
 from config.logging_config import setup_logging
 from core.probe_pool import ProbePool
 from core.probe_task_queue import ProbeTaskQueue
+from core.profiler import Profiler
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# Use Profiler.profile from core.profiler for method profiling
 
 
 class PrequalLoadBalancer(LoadBalancer):
@@ -21,6 +24,7 @@ class PrequalLoadBalancer(LoadBalancer):
     Also manages probe task scheduling with random selection without replacement.
     """
 
+    @Profiler.profile
     def __init__(
         self,
         registry: Registry,
@@ -41,6 +45,7 @@ class PrequalLoadBalancer(LoadBalancer):
         # start background probe scheduler loop
         self._scheduler_task = asyncio.create_task(self._probe_scheduler_loop())
 
+    @Profiler.profile
     async def _classify_backends(self, backends):
         """Classify backends as hot or cold, returning RIF history map to reuse."""
         # fetch all RIFs concurrently and build map
@@ -66,6 +71,7 @@ class PrequalLoadBalancer(LoadBalancer):
             (cold if curr < med else hot).append(backend)
         return cold, hot, rifs_map
 
+    @Profiler.profile
     async def _select_backend(self, cold, hot, rifs_map=None):
         """Select backend from cold (lowest latency) or hot (lowest current rif), reusing RIF map if provided."""
         if cold:
@@ -93,6 +99,7 @@ class PrequalLoadBalancer(LoadBalancer):
             logger.info(f"Selected hot backend (lowest current rif): {selected.url}")
         return selected
 
+    @Profiler.profile
     async def _schedule_probe_tasks(self, healthy_backends):
         """
         Enqueue a probe task for a random healthy backend (without replacement) with probability R=5/RPS per request.
@@ -140,6 +147,7 @@ class PrequalLoadBalancer(LoadBalancer):
         else:
             logger.debug(f"No probe scheduled (R={R:.3f}, RPS={rps:.2f})")
 
+    @Profiler.profile
     async def _probe_scheduler_loop(self):
         """
         Background task to periodically invoke probe scheduling.
@@ -150,6 +158,7 @@ class PrequalLoadBalancer(LoadBalancer):
             # wait before next scheduling cycle
             await asyncio.sleep(0.02)
 
+    @Profiler.profile
     async def get_next_backend(self) -> Optional[str]:
         """
         Select the next backend to route a request to, based on probe pool hot/cold classification and latency/rif.

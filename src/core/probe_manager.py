@@ -5,11 +5,13 @@ import httpx
 
 from core.probe_pool import ProbePool
 from core.probe_task_queue import ProbeTaskQueue
+from core.profiler import Profiler
 
 logger = logging.getLogger(__name__)
 
 
 class ProbeManager:
+    @Profiler.profile
     def __init__(
         self,
         probe_pool: ProbePool,
@@ -23,6 +25,7 @@ class ProbeManager:
         self._running = False
         self.semaphore = asyncio.Semaphore(max_concurrent_probes)
 
+    @Profiler.profile
     async def send_probe(self, backend_url: str):
         async with self.semaphore:
             try:
@@ -46,6 +49,7 @@ class ProbeManager:
             except Exception as e:
                 logger.error(f"Probe error for {backend_url}: {e}")
 
+    @Profiler.profile
     async def run(self):
         self._running = True
         while self._running:
@@ -56,5 +60,6 @@ class ProbeManager:
             await self.send_probe(backend_url)
             self.probe_task_queue.task_done()
 
+    @Profiler.profile
     def stop(self):
         self._running = False

@@ -6,6 +6,7 @@ from fastapi import Request, Response
 
 from config.config import Config
 from config.logging_config import setup_logging
+from core.profiler import Profiler
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -16,9 +17,11 @@ class ProxyHandler:
     Handler for proxying HTTP requests to backend services, with support for custom hooks.
     """
 
+    @Profiler.profile
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
 
+    @Profiler.profile
     async def handle_proxy(self, request: Request, path: str, backend_url: str):
         """
         Proxy an incoming HTTP request to the specified backend URL, applying custom hooks if configured.

@@ -6,6 +6,7 @@ from typing import List
 from abstractions.registry import Registry
 from config.logging_config import setup_logging
 from contracts.backend import Backend
+from core.profiler import Profiler
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class BackendRegistry(Registry):
     Registry for managing backend service instances and their heartbeat status.
     """
 
+    @Profiler.profile
     def __init__(self, heartbeat_timeout=None):
         """
         Initialize the BackendRegistry.
@@ -32,6 +34,7 @@ class BackendRegistry(Registry):
             f"BackendRegistry initialized with heartbeat_timeout={self.heartbeat_timeout}"
         )
 
+    @Profiler.profile
     async def register(self, backend: Backend):
         """
         Register a backend and update its last heartbeat timestamp.
@@ -53,6 +56,7 @@ class BackendRegistry(Registry):
         # else: keep the existing object (preserve probe state)
         return {"status": "registered", "backend": self._backends[key].model_dump()}
 
+    @Profiler.profile
     async def unregister(self, backend: Backend):
         """
         Unregister a backend and remove its heartbeat record.
@@ -73,6 +77,7 @@ class BackendRegistry(Registry):
             )
         return {"status": "unregistered", "backend": backend.model_dump()}
 
+    @Profiler.profile
     async def list_backends(self) -> List[Backend]:
         """
         List all registered backends, marking those with expired heartbeats as unhealthy.

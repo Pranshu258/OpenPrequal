@@ -1,13 +1,14 @@
 import asyncio
 import logging
 import time
-from bisect import bisect_left
+from bisect import bisect_left, insort
 from collections import defaultdict, deque
 from statistics import median
 
 from prometheus_client import Gauge, Histogram
 
 from config.logging_config import setup_logging
+from core.profiler import Profiler
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ class MetricsManager:
     Manager for collecting and reporting backend metrics such as in-flight requests and latency.
     """
 
+    @Profiler.profile
     def __init__(self, rif_bins: list[int] | None = None):
         """
         Initialize the MetricsManager and set up Prometheus metrics.
@@ -35,6 +37,8 @@ class MetricsManager:
         # Map of RIF (Requests In-Flight) -> deque of recent latencies (max 1000)
         self._rif_latencies = defaultdict(lambda: deque(maxlen=1000))
         self._latency_lock = asyncio.Lock()
+        # maintain sorted list of RIF keys with recorded samples
+        self._active_rif_keys = []
         # Optional bin configuration (sorted, unique)
         if rif_bins is not None and len(rif_bins) > 0:
             self._rif_bins = sorted(set(rif_bins))
@@ -43,6 +47,7 @@ class MetricsManager:
         logger.info("MetricsManager initialized.")
 
     # Helper: map an observed RIF to a storage key (either exact RIF or bin upper-bound)
+    @Profiler.profile
     def _get_rif_key(self, rif: int) -> int:
         if not self._rif_bins:
             return rif
@@ -53,6 +58,7 @@ class MetricsManager:
             return self._rif_bins[-1]
         return self._rif_bins[idx]
 
+    @Profiler.profile
     async def prometheus_middleware(self, request, call_next):
         """
         Middleware for tracking request metrics and updating Prometheus gauges/histograms.
@@ -77,11 +83,16 @@ class MetricsManager:
             # Store latency under the RIF observed at request start
             async with self._latency_lock:
                 key = self._get_rif_key(rif_at_start)
+                # append latency sample directly
                 self._rif_latencies[key].append(elapsed)
+                # track active RIF keys
+                if key not in self._active_rif_keys:
+                    insort(self._active_rif_keys, key)
             logger.debug(
                 f"Request processed in {elapsed:.4f}s. In-flight: {self.get_in_flight()}"
             )
 
+    @Profiler.profile
     def get_in_flight(self):
         """
         Get the current number of in-flight requests.
@@ -93,6 +104,7 @@ class MetricsManager:
         logger.debug(f"Current in-flight requests: {val}")
         return val
 
+    @Profiler.profile
     async def get_avg_latency(self):
         """
         Get the median request latency for the current RIF (requests in-flight) value.
@@ -111,7 +123,12 @@ class MetricsManager:
                 )
                 return med
 
-            rif_keys = sorted(k for k, v in self._rif_latencies.items() if len(v) > 0)
+            # use tracked active RIF keys with samples
+            rif_keys = [
+                k
+                for k in self._active_rif_keys
+                if len(self._rif_latencies.get(k, [])) > 0
+            ]
             if not rif_keys:
                 logger.debug("No latency samples recorded yet; returning 0.0")
                 return 0.0
