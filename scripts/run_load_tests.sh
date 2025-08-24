@@ -6,9 +6,9 @@
 PROXY_RESTART_SCRIPT="scripts/run_local.sh"  # Adjust if needed
 LOCUST_FILE="locustfile.py"
 LOCUST_HOST="http://localhost:8000"  # Adjust if needed
-USERS=1000
+USERS=300
 SPAWN_RATE=100
-RUN_TIME="8m"
+RUN_TIME="10m"
 RESULTS_DIR="logs/"
 FINAL_RESULTS_DIR="results/"
 
@@ -61,6 +61,9 @@ function run_test() {
         return 2
     fi
     echo "$LABEL test complete. Results saved to $OUT_FILE"
+
+    echo "Profiler analysis..."
+    python3 scripts/profiler_analysis.py > $FINAL_RESULTS_DIR/${LABEL}_profiler_results.csv
 }
 
 run_test "default" "prequal" || echo "[WARN] prequal test failed."
