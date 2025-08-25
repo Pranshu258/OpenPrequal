@@ -1,7 +1,6 @@
-import asyncio
 import logging
 import time
-from bisect import bisect_left, insort
+from bisect import bisect_left
 from collections import defaultdict, deque
 from statistics import median
 
@@ -36,9 +35,9 @@ class MetricsManager:
         )
         # Map of RIF (Requests In-Flight) -> deque of recent latencies (max 1000)
         self._rif_latencies = defaultdict(lambda: deque(maxlen=1000))
-        self._latency_lock = asyncio.Lock()
-        # maintain sorted list of RIF keys with recorded samples
-        self._active_rif_keys = []
+        # Removed asyncio.Lock for performance; risk of lost sample is acceptable for metrics
+        # maintain set of RIF keys with recorded samples (sort only when needed)
+        self._active_rif_keys = set()
         # Optional bin configuration (sorted, unique)
         if rif_bins is not None and len(rif_bins) > 0:
             self._rif_bins = sorted(set(rif_bins))
@@ -80,14 +79,10 @@ class MetricsManager:
             elapsed = time.time() - start
             self.IN_FLIGHT.dec()
             self.REQ_LATENCY.observe(elapsed)
-            # Store latency under the RIF observed at request start
-            async with self._latency_lock:
-                key = self._get_rif_key(rif_at_start)
-                # append latency sample directly
-                self._rif_latencies[key].append(elapsed)
-                # track active RIF keys
-                if key not in self._active_rif_keys:
-                    insort(self._active_rif_keys, key)
+            # Store latency under the RIF observed at request start (no lock for speed)
+            key = self._get_rif_key(rif_at_start)
+            self._rif_latencies[key].append(elapsed)
+            self._active_rif_keys.add(key)
             logger.debug(
                 f"Request processed in {elapsed:.4f}s. In-flight: {self.get_in_flight()}"
             )
@@ -113,60 +108,59 @@ class MetricsManager:
             float: Median latency in seconds for the current RIF, or 0.0 if none.
         """
         current_rif = int(self.get_in_flight())
-        async with self._latency_lock:
-            key = self._get_rif_key(current_rif)
-            samples = list(self._rif_latencies.get(key, ()))
-            if samples:
-                med = float(median(samples))
+        key = self._get_rif_key(current_rif)
+        samples = list(self._rif_latencies.get(key, ()))
+        if samples:
+            med = float(median(samples))
+            logger.debug(
+                f"Median latency for RIF={current_rif} (key={key}): {med:.4f}s (exact)"
+            )
+            return med
+
+        # use tracked active RIF keys with samples
+        rif_keys = [
+            k
+            for k in sorted(self._active_rif_keys)
+            if len(self._rif_latencies.get(k, [])) > 0
+        ]
+        if not rif_keys:
+            logger.debug("No latency samples recorded yet; returning 0.0")
+            return 0.0
+
+        idx = bisect_left(rif_keys, key)
+        lower_key = rif_keys[idx - 1] if idx > 0 else None
+        higher_key = rif_keys[idx] if idx < len(rif_keys) else None
+
+        if lower_key is not None and higher_key is None:
+            med_lower = float(median(self._rif_latencies[lower_key]))
+            logger.debug(
+                f"No exact samples for RIF={current_rif}; using lower RIF={lower_key} median {med_lower:.4f}s"
+            )
+            return med_lower
+
+        if higher_key is not None and lower_key is None:
+            med_higher = float(median(self._rif_latencies[higher_key]))
+            logger.debug(
+                f"No exact samples for RIF={current_rif}; using higher RIF={higher_key} median {med_higher:.4f}s"
+            )
+            return med_higher
+
+        if lower_key is not None and higher_key is not None:
+            med_lower = float(median(self._rif_latencies[lower_key]))
+            med_higher = float(median(self._rif_latencies[higher_key]))
+            if higher_key == lower_key:
                 logger.debug(
-                    f"Median latency for RIF={current_rif} (key={key}): {med:.4f}s (exact)"
-                )
-                return med
-
-            # use tracked active RIF keys with samples
-            rif_keys = [
-                k
-                for k in self._active_rif_keys
-                if len(self._rif_latencies.get(k, [])) > 0
-            ]
-            if not rif_keys:
-                logger.debug("No latency samples recorded yet; returning 0.0")
-                return 0.0
-
-            idx = bisect_left(rif_keys, key)
-            lower_key = rif_keys[idx - 1] if idx > 0 else None
-            higher_key = rif_keys[idx] if idx < len(rif_keys) else None
-
-            if lower_key is not None and higher_key is None:
-                med_lower = float(median(self._rif_latencies[lower_key]))
-                logger.debug(
-                    f"No exact samples for RIF={current_rif}; using lower RIF={lower_key} median {med_lower:.4f}s"
+                    f"Degenerate neighbor case for RIF={current_rif}; returning median {med_lower:.4f}s"
                 )
                 return med_lower
-
-            if higher_key is not None and lower_key is None:
-                med_higher = float(median(self._rif_latencies[higher_key]))
-                logger.debug(
-                    f"No exact samples for RIF={current_rif}; using higher RIF={higher_key} median {med_higher:.4f}s"
+            t = (key - lower_key) / (higher_key - lower_key)
+            estimate = med_lower + t * (med_higher - med_lower)
+            logger.debug(
+                (
+                    f"Estimated median latency for RIF={current_rif} (key={key}) by interpolating "
+                    f"lower RIF={lower_key} ({med_lower:.4f}s) and higher RIF={higher_key} ({med_higher:.4f}s): "
+                    f"{estimate:.4f}s"
                 )
-                return med_higher
-
-            if lower_key is not None and higher_key is not None:
-                med_lower = float(median(self._rif_latencies[lower_key]))
-                med_higher = float(median(self._rif_latencies[higher_key]))
-                if higher_key == lower_key:
-                    logger.debug(
-                        f"Degenerate neighbor case for RIF={current_rif}; returning median {med_lower:.4f}s"
-                    )
-                    return med_lower
-                t = (key - lower_key) / (higher_key - lower_key)
-                estimate = med_lower + t * (med_higher - med_lower)
-                logger.debug(
-                    (
-                        f"Estimated median latency for RIF={current_rif} (key={key}) by interpolating "
-                        f"lower RIF={lower_key} ({med_lower:.4f}s) and higher RIF={higher_key} ({med_higher:.4f}s): "
-                        f"{estimate:.4f}s"
-                    )
-                )
-                return float(estimate)
+            )
+            return float(estimate)
         return 0.0
