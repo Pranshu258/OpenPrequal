@@ -37,6 +37,10 @@ class ProbePool:
 
     @Profiler.profile
     async def get_current_latency(self, backend_id):
+        # Use a faster check that doesn't require lock for read operations
+        if backend_id not in self.probes:
+            return None
+
         async with self._lock:
             if backend_id in self.probes:
                 return self.probes[backend_id]["current_latency"]
@@ -44,7 +48,12 @@ class ProbePool:
 
     @Profiler.profile
     async def get_rif_values(self, backend_id):
+        # Use a faster check that doesn't require lock for read operations
+        if backend_id not in self.probes:
+            return []
+
         async with self._lock:
             if backend_id in self.probes:
+                # Return a list copy to avoid external modifications
                 return list(self.probes[backend_id]["rif_values"])
             return []
