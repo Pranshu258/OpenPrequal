@@ -1,29 +1,29 @@
 Function		Average (s)	Count
-BackendRegistry.__init__,0.000000,11
-BackendRegistry.list_backends,0.200971,360058
-BackendRegistry.register,0.167061,3974
-MetricsManager.__init__,0.411364,220
-MetricsManager._get_rif_key,0.000005,208362
-MetricsManager.get_avg_latency,0.388056,25645
-MetricsManager.get_in_flight,0.000012,599441
-MetricsManager.prometheus_middleware,98.983346,182717
-PrequalLoadBalancer.__init__,0.000000,6
-PrequalLoadBalancer._classify_backends,1.749707,83499
-PrequalLoadBalancer._schedule_probe_tasks,0.050074,198935
-PrequalLoadBalancer._select_backend,0.808662,83499
-PrequalLoadBalancer.get_next_backend,2.759029,83499
-ProbeManager.__init__,0.000000,11
-ProbeManager.send_probe,115.572884,21629
-ProbePool.__init__,0.000000,11
-ProbePool.add_probe,0.005790,21625
-ProbePool.get_current_latency,0.000018,435736
-ProbePool.get_rif_values,0.000064,1643923
-ProbeTaskQueue.__init__,0.000000,11
-ProbeTaskQueue.add_task,0.001523,21737
-ProbeTaskQueue.get_task,95.741137,21630
-ProbeTaskQueue.size,0.000009,21640
-ProbeTaskQueue.task_done,0.000014,21629
-ProxyHandler.__init__,0.000000,11
-ProxyHandler.handle_proxy,102.926725,161092
-RoundRobinLoadBalancer.__init__,0.060000,5
-RoundRobinLoadBalancer.get_next_backend,0.223267,77624
+BackendRegistry.__init__                               0.009524       21
+BackendRegistry.list_backends                          0.167444   534198
+BackendRegistry.register                               0.189329    13673
+MetricsManager.__init__                                0.380952      420
+MetricsManager._get_rif_key                            0.000016   367578
+MetricsManager.get_avg_latency                         0.512094    38622
+MetricsManager.get_in_flight                           0.000094  1064112
+MetricsManager.prometheus_middleware                 101.496448   328956
+PrequalLoadBalancer.__init__                           0.009091       11
+PrequalLoadBalancer._classify_backends                 1.725224   155071
+PrequalLoadBalancer._schedule_probe_tasks              0.043802   230033
+PrequalLoadBalancer._select_backend                    0.761669   155071
+PrequalLoadBalancer.get_next_backend                   2.673193   155071
+ProbeManager.__init__                                  0.000000       21
+ProbeManager.send_probe                              115.759625    24867
+ProbePool.__init__                                     0.000000       21
+ProbePool.add_probe                                    0.005064    24860
+ProbePool.get_current_latency                          0.000017   777836
+ProbePool.get_rif_values                               0.000056  2977976
+ProbeTaskQueue.__init__                                0.000000       21
+ProbeTaskQueue.add_task                                0.001322    25047
+ProbeTaskQueue.get_task                               94.032583    24869
+ProbeTaskQueue.size                                    0.000008    24888
+ProbeTaskQueue.task_done                               0.000012    24867
+ProxyHandler.__init__                                  0.000000       21
+ProxyHandler.handle_proxy                            105.621459   304095
+RoundRobinLoadBalancer.__init__                        0.060000       10
+RoundRobinLoadBalancer.get_next_backend                0.209014   149094
