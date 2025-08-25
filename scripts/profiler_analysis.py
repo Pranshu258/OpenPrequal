@@ -19,4 +19,4 @@ with open(log_file, "r") as f:
 print("Function\t\tAverage (s)\tCount")
 for func in sorted(totals):
     avg = 1000 * totals[func] / counts[func]
-    print(f"{func},{avg:.6f},{counts[func]}")
+    print(f"{func:<50} {avg:>15.6f} {counts[func]:>10}")
