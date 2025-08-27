@@ -15,6 +15,10 @@ docker network inspect $NETWORK >/dev/null 2>&1 || docker network create $NETWOR
 # Start proxy on the network
 docker run -d --name openprequal-proxy --network $NETWORK -p 8000:8000 pranshug258/openprequal-proxy:latest
 
+# Wait for proxy to be ready
+echo "Waiting for proxy to start..."
+sleep 5
+
 # Start backend servers on the same network, using container names for backend registration
 docker run -d --name openprequal-server1 --network $NETWORK \
   -e PROXY_URL=http://openprequal-proxy:8000 \
@@ -29,3 +33,21 @@ docker run -d --name openprequal-server2 --network $NETWORK \
   -e BACKEND_PORT=8000 \
   -p 8002:8000 \
   pranshug258/openprequal-server:latest
+
+# Wait for services to be ready
+echo "Waiting for all services to start..."
+sleep 10
+
+# Show container status
+echo "Container status:"
+docker ps --filter "network=$NETWORK"
+
+# Check logs for any errors
+echo "Checking proxy logs:"
+docker logs openprequal-proxy --tail 20
+
+echo "Checking server1 logs:"
+docker logs openprequal-server1 --tail 20
+
+echo "Checking server2 logs:"
+docker logs openprequal-server2 --tail 20
