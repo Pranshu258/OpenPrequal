@@ -3,10 +3,10 @@
 # Script to compare round robin and prequal load balancers using Locust
 
 # CONFIGURATION
-PROXY_RESTART_SCRIPT="scripts/run_local.sh"  # Adjust if needed
+PROXY_RESTART_SCRIPT="scripts/run_docker.sh"  # Adjust if needed
 LOCUST_FILE="locustfile.py"
 LOCUST_HOST="http://localhost:8000"  # Adjust if needed
-USERS=1000
+USERS=300
 SPAWN_RATE=100
 RUN_TIME="2m"
 RESULTS_DIR="logs/"
@@ -23,7 +23,7 @@ function run_test() {
 
     # Restart proxy/server with the desired load balancer class
     echo "Restarting proxy/server with $LB_CLASS..."
-    LOAD_BALANCER_CLASS="$LB_CLASS" bash "$PROXY_RESTART_SCRIPT"
+    bash "$PROXY_RESTART_SCRIPT" "$LB_CLASS" 20
 
     # Wait for proxy to be up (max 30s)
     echo "Waiting for proxy server to be up..."

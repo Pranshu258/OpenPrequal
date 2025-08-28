@@ -8,7 +8,7 @@ NUM_SERVERS=${2:-20}
 echo "Using load balancer class: $LOAD_BALANCER_CLASS"
 echo "Starting $NUM_SERVERS backend servers"
 
-docker build -f k8s/openprequal/docker/Dockerfile.proxy -t pranshug258/openprequal-proxy:latest .
+docker build -f k8s/openprequal/docker/Dockerfile.proxy --build-arg LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" -t pranshug258/openprequal-proxy:latest .
 docker build -f k8s/openprequal/docker/Dockerfile.server -t pranshug258/openprequal-server:latest .
 
 docker push pranshug258/openprequal-proxy:latest
@@ -26,7 +26,6 @@ docker network inspect $NETWORK >/dev/null 2>&1 || docker network create $NETWOR
 
 # Start proxy on the network
 docker run -d --name openprequal-proxy --network $NETWORK -p 8000:8000 \
-  -e LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" \
   pranshug258/openprequal-proxy:latest
 
 # Wait for proxy to be ready
