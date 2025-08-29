@@ -1,0 +1,59 @@
+{
+  "algorithm": "least_rif_power_of_two_choices",
+  "distribution": {
+    "http://openprequal-server10:8000": 475,
+    "http://openprequal-server11:8000": 559,
+    "http://openprequal-server12:8000": 741,
+    "http://openprequal-server13:8000": 603,
+    "http://openprequal-server14:8000": 562,
+    "http://openprequal-server15:8000": 541,
+    "http://openprequal-server16:8000": 640,
+    "http://openprequal-server17:8000": 739,
+    "http://openprequal-server18:8000": 563,
+    "http://openprequal-server19:8000": 390,
+    "http://openprequal-server1:8000": 575,
+    "http://openprequal-server20:8000": 693,
+    "http://openprequal-server2:8000": 718,
+    "http://openprequal-server3:8000": 505,
+    "http://openprequal-server4:8000": 573,
+    "http://openprequal-server5:8000": 610,
+    "http://openprequal-server6:8000": 533,
+    "http://openprequal-server7:8000": 518,
+    "http://openprequal-server8:8000": 522,
+    "http://openprequal-server9:8000": 593
+  },
+  "metrics": {
+    "percentiles": {
+      "p100": 330.0,
+      "p50": 100.0,
+      "p66": 120.0,
+      "p75": 130.0,
+      "p80": 140.0,
+      "p90": 160.0,
+      "p95": 180.0,
+      "p98": 210.0,
+      "p99": 230.0,
+      "p99_9": 310.0,
+      "p99_99": 320.0
+    },
+    "summary": {
+      "failures_per_second": 0.0,
+      "latency_avg": 106.7009856206101,
+      "latency_max": 326.7463330012106,
+      "latency_median": 100.0,
+      "latency_min": 26.27804199801176,
+      "requests_per_second": 97.03948228645564,
+      "total_failures": 0,
+      "total_requests": 11653
+    }
+  },
+  "plots": [
+    "results/least_rif_power_of_two_choices_requests_per_s.png",
+    "results/least_rif_power_of_two_choices_failures_per_s.png",
+    "results/least_rif_power_of_two_choices_percentiles.png",
+    "results/least_rif_power_of_two_choices_total_requests.png",
+    "results/least_rif_power_of_two_choices_latency.png",
+    "results/least_rif_power_of_two_choices_backend_distribution_pie.png"
+  ],
+  "total": 11653
+}

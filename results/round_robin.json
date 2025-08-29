@@ -1,51 +1,50 @@
 {
   "algorithm": "round_robin",
   "distribution": {
-    "http://openprequal-server10:8000": 278,
-    "http://openprequal-server11:8000": 1235,
-    "http://openprequal-server12:8000": 2055,
-    "http://openprequal-server13:8000": 2534,
-    "http://openprequal-server14:8000": 864,
-    "http://openprequal-server15:8000": 1183,
-    "http://openprequal-server16:8000": 2676,
-    "http://openprequal-server17:8000": 887,
-    "http://openprequal-server18:8000": 1442,
-    "http://openprequal-server19:8000": 1328,
-    "http://openprequal-server1:8000": 297,
-    "http://openprequal-server20:8000": 888,
-    "http://openprequal-server2:8000": 661,
-    "http://openprequal-server3:8000": 2333,
-    "http://openprequal-server4:8000": 1516,
-    "http://openprequal-server5:8000": 1358,
-    "http://openprequal-server6:8000": 1398,
-    "http://openprequal-server7:8000": 1229,
-    "http://openprequal-server8:8000": 705,
-    "http://openprequal-server9:8000": 659,
-    "unknown": 1783
+    "http://openprequal-server10:8000": 580,
+    "http://openprequal-server11:8000": 580,
+    "http://openprequal-server12:8000": 581,
+    "http://openprequal-server13:8000": 581,
+    "http://openprequal-server14:8000": 581,
+    "http://openprequal-server15:8000": 581,
+    "http://openprequal-server16:8000": 581,
+    "http://openprequal-server17:8000": 581,
+    "http://openprequal-server18:8000": 581,
+    "http://openprequal-server19:8000": 580,
+    "http://openprequal-server1:8000": 581,
+    "http://openprequal-server20:8000": 581,
+    "http://openprequal-server2:8000": 581,
+    "http://openprequal-server3:8000": 580,
+    "http://openprequal-server4:8000": 580,
+    "http://openprequal-server5:8000": 580,
+    "http://openprequal-server6:8000": 580,
+    "http://openprequal-server7:8000": 580,
+    "http://openprequal-server8:8000": 581,
+    "http://openprequal-server9:8000": 580
   },
   "metrics": {
     "percentiles": {
-      "p100": 390.0,
-      "p50": 110.0,
+      "p100": 340.0,
+      "p50": 120.0,
       "p66": 140.0,
       "p75": 150.0,
       "p80": 160.0,
-      "p90": 190.0,
-      "p95": 210.0,
-      "p98": 240.0,
-      "p99": 270.0,
-      "p99_9": 330.0,
-      "p99_99": 360.0
+      "p90": 170.0,
+      "p95": 190.0,
+      "p98": 210.0,
+      "p99": 230.0,
+      "p99_9": 300.0,
+      "p99_99": 330.0
     },
     "summary": {
       "failures_per_second": 0.0,
-      "latency_avg": 121.06472274073502,
-      "latency_max": 385.04466700032935,
-      "latency_median": 110.0,
-      "latency_min": 29.25662500274484,
-      "requests_per_second": 96.16626047047103,
+      "latency_avg": 122.63713967127039,
+      "latency_max": 343.02916699743946,
+      "latency_median": 120.0,
+      "latency_min": 28.77329200055101,
+      "requests_per_second": 96.68923017221717,
       "total_failures": 0,
-      "total_requests": 11548
+      "total_requests": 11611
     }
   },
   "plots": [
@@ -56,5 +55,5 @@
     "results/round_robin_latency.png",
     "results/round_robin_backend_distribution_pie.png"
   ],
-  "total": 27309
+  "total": 11611
 }
