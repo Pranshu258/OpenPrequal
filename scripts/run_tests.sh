@@ -1,13 +1,25 @@
 #!/bin/bash
-# Run all Python unit tests using pytest
+# Run Go unit tests for the repository. Optionally run Python tests if --python is passed.
 
-set -e
+set -euo pipefail
 
-cd "$(dirname "$0")/.."
+ROOT_DIR="$(dirname "$0")/.."
+cd "$ROOT_DIR"
 
-if ! command -v pytest >/dev/null 2>&1; then
-  echo "pytest not found. Installing..."
-  pip install pytest
+if ! command -v go >/dev/null 2>&1; then
+  echo "go not found. Please install Go to run tests."
+  exit 1
 fi
 
-PYTHONPATH=src pytest tests "$@"
+echo "Running go test ./... (from go/ module)"
+cd go
+go test ./...
+cd - >/dev/null
+
+if [ "${1-}" = "--python" ]; then
+  if ! command -v pytest >/dev/null 2>&1; then
+    echo "pytest not found. Installing..."
+    pip install pytest
+  fi
+  PYTHONPATH=src pytest tests
+fi

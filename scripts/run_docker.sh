@@ -8,8 +8,33 @@ NUM_SERVERS=${2:-20}
 echo "Using load balancer class: $LOAD_BALANCER_CLASS"
 echo "Starting $NUM_SERVERS backend servers"
 
-docker build -f k8s/openprequal/docker/Dockerfile.proxy --build-arg LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" -t pranshug258/openprequal-proxy:latest .
-docker build -f k8s/openprequal/docker/Dockerfile.server -t pranshug258/openprequal-server:latest .
+
+echo "Building Go-based proxy image..."
+docker build -t pranshug258/openprequal-proxy:latest -f - . <<'DOCKERFILE'
+FROM golang:1.20-alpine AS builder
+WORKDIR /src
+COPY go/ go/
+RUN cd go/cmd/proxy && CGO_ENABLED=0 GOOS=linux go build -o /proxy
+
+FROM alpine:3.18
+COPY --from=builder /proxy /proxy
+EXPOSE 8000
+ENV LOAD_BALANCER_CLASS=default
+ENTRYPOINT ["/proxy"]
+DOCKERFILE
+
+echo "Building Go-based server image..."
+docker build -t pranshug258/openprequal-server:latest -f - . <<'DOCKERFILE'
+FROM golang:1.20-alpine AS builder
+WORKDIR /src
+COPY go/ go/
+RUN cd go/cmd/server && CGO_ENABLED=0 GOOS=linux go build -o /server
+
+FROM alpine:3.18
+COPY --from=builder /server /server
+EXPOSE 8000
+ENTRYPOINT ["/server"]
+DOCKERFILE
 
 docker push pranshug258/openprequal-proxy:latest
 docker push pranshug258/openprequal-server:latest
