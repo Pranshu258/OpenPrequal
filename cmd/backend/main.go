@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,7 +39,11 @@ func main() {
 		avg := metrics.AvgLatencyLast5Min()
 		inFlight := metrics.InFlight()
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"in_flight": %d, "avg_latency_5min_ms": %d}`+"\n", inFlight, avg.Milliseconds())
+		resp := MetricsResponse{
+			InFlight:         int64(inFlight),
+			AvgLatency5MinMs: avg.Milliseconds(),
+		}
+		json.NewEncoder(w).Encode(resp)
 	})
 
 	log.Printf("Backend server listening at %s\n", url)
