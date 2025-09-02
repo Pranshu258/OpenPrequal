@@ -2,10 +2,6 @@
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 
-# Go build output
-backend
-proxy
-
 # Logs
 *.log
 nohup.out
