@@ -14,15 +14,16 @@ pkill -f './backend' || true
 pkill -f './proxy' || true
 sleep 1
 
-# Build backend and proxy
-cd "$(dirname "$0")"
-go build -o backend ./cmd/backend/main.go
-go build -o proxy ./cmd/proxy/main.go
 
-# Start backend servers
+# Build backend and proxy in builds/
+cd "$(dirname "$0")"
+go build -o builds/backend ./cmd/backend/main.go
+go build -o builds/proxy ./cmd/proxy/main.go
+
+# Start backend servers, logs in logs/
 for ((i=1; i<=NUM_BACKENDS; i++)); do
     PORT=$((8080 + i))
-    HOST=localhost PORT=$PORT nohup ./backend > backend_$PORT.log 2>&1 &
+    HOST=localhost PORT=$PORT nohup builds/backend > logs/backend_$PORT.log 2>&1 &
     echo "Started backend on port $PORT"
 done
 
@@ -34,6 +35,6 @@ for ((i=1; i<=NUM_BACKENDS; i++)); do
 done
 BACKEND_URLS=${BACKEND_URLS%,} # Remove trailing comma
 
-# Run proxy
-REGISTRY_TYPE=inmemory LOAD_BALANCER_TYPE=$ALGO BACKEND_URLS="$BACKEND_URLS" nohup ./proxy > proxy.log 2>&1 &
+# Run proxy, logs in logs/
+REGISTRY_TYPE=inmemory LOAD_BALANCER_TYPE=$ALGO BACKEND_URLS="$BACKEND_URLS" nohup builds/proxy > logs/proxy.log 2>&1 &
 echo "Started proxy with $ALGO algorithm and $NUM_BACKENDS backends"
