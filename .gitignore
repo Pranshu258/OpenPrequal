@@ -34,3 +34,4 @@ go.work.sum
 logs
 */__pycache__
 .venv
+builds/

@@ -1,12 +1,8 @@
-package main
+package metrics
 
-import (
-	"sync"
-	"time"
-)
+import "time"
 
 type MetricsManager struct {
-	mu        sync.Mutex
 	inFlight  int
 	latencies []requestLatency
 }
@@ -23,28 +19,20 @@ func NewMetricsManager() *MetricsManager {
 }
 
 func (m *MetricsManager) IncInFlight() {
-	m.mu.Lock()
 	m.inFlight++
-	m.mu.Unlock()
 }
 
 func (m *MetricsManager) DecInFlight() {
-	m.mu.Lock()
 	if m.inFlight > 0 {
 		m.inFlight--
 	}
-	m.mu.Unlock()
 }
 
 func (m *MetricsManager) AddLatency(d time.Duration) {
-	m.mu.Lock()
 	m.latencies = append(m.latencies, requestLatency{timestamp: time.Now(), duration: d})
-	m.mu.Unlock()
 }
 
 func (m *MetricsManager) AvgLatencyLast5Min() time.Duration {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	now := time.Now()
 	var sum time.Duration
 	var count int
@@ -65,7 +53,5 @@ func (m *MetricsManager) AvgLatencyLast5Min() time.Duration {
 }
 
 func (m *MetricsManager) InFlight() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	return m.inFlight
 }

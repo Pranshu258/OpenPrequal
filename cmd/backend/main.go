@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/Pranshu258/OpenPrequal/cmd/backend/metrics"
 )
 
 func main() {
@@ -20,14 +22,14 @@ func main() {
 	}
 	url := fmt.Sprintf("http://%s:%s", host, port)
 
-	metrics := NewMetricsManager()
+	metricsManager := metrics.NewMetricsManager()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		metrics.IncInFlight()
+		metricsManager.IncInFlight()
 		defer func() {
-			metrics.DecInFlight()
-			metrics.AddLatency(time.Since(start))
+			metricsManager.DecInFlight()
+			metricsManager.AddLatency(time.Since(start))
 		}()
 
 		w.Header().Set("X-Backend-Url", url)
@@ -36,10 +38,10 @@ func main() {
 	})
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		avg := metrics.AvgLatencyLast5Min()
-		inFlight := metrics.InFlight()
+		avg := metricsManager.AvgLatencyLast5Min()
+		inFlight := metricsManager.InFlight()
 		w.Header().Set("Content-Type", "application/json")
-		resp := MetricsResponse{
+		resp := metrics.MetricsResponse{
 			InFlight:         int64(inFlight),
 			AvgLatency5MinMs: avg.Milliseconds(),
 		}

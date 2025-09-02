@@ -1,4 +1,4 @@
-package main
+package metrics
 
 type MetricsResponse struct {
 	InFlight         int64 `json:"in_flight"`
