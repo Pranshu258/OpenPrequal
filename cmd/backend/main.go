@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Pranshu258/OpenPrequal/cmd/backend/metrics"
+	"github.com/Pranshu258/OpenPrequal/pkg/metrics"
 )
 
 func main() {
