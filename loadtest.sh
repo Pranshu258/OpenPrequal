@@ -14,7 +14,10 @@ mkdir -p builds
 mkdir -p loadtest_results
 
 for ALGO in "${ALGOS[@]}"; do
-    echo "\n=== Running load balancer with $ALGO ==="
+    echo ""
+    echo "========================================"
+    echo "Running load balancer with $ALGO"
+    echo "========================================"
     ./run.sh $NUM_BACKENDS $ALGO
     sleep 2 # Give servers time to start
 
@@ -30,32 +33,33 @@ for ALGO in "${ALGOS[@]}"; do
     # Generate vegeta metrics (JSON)
     vegeta report -type=json < loadtest_results/result_$ALGO.bin > loadtest_results/metrics_$ALGO.json
 
-    # Analyze backend distribution from backend URL in response body
-    TMP_DIST=$(mktemp)
-    vegeta encode loadtest_results/result_$ALGO.bin \
+    # Analyze backend distribution from backend URL in response body (in memory)
+    DIST_RAW=$(vegeta encode loadtest_results/result_$ALGO.bin \
         | jq -r '.body' \
         | base64 --decode 2>/dev/null \
         | grep -o 'http://localhost:[0-9]*' \
-        | sort | uniq -c | sort -nr > "$TMP_DIST"
+        | sort | uniq -c | sort -nr)
 
-    # Calculate percentages and write only the summary
-    TOTAL=$(awk '{sum += $1} END {print sum}' "$TMP_DIST")
+    TOTAL=$(echo "$DIST_RAW" | awk '{sum += $1} END {print sum}')
     TOTAL=${TOTAL:-0}
     if [ "$TOTAL" -eq 0 ]; then
-        echo "No requests found. Cannot calculate backend distribution." > loadtest_results/distribution_$ALGO.txt
+        DIST_SUMMARY="No requests found. Cannot calculate backend distribution."
+        DIST_JSON='{}'
     else
-        awk -v total=$TOTAL '{printf "%s: %.2f%%\n", $2, ($1/total)*100}' "$TMP_DIST" > loadtest_results/distribution_$ALGO.txt
+        DIST_SUMMARY=$(echo "$DIST_RAW" | awk -v total=$TOTAL '{printf "%s: %.2f%%\n", $2, ($1/total)*100}')
+        DIST_JSON=$(echo "$DIST_RAW" | awk -v total=$TOTAL '{printf "\"%s\": %.4f, ", $2, ($1/total)*100}' | sed 's/, $//')
+        DIST_JSON="{$DIST_JSON}"
     fi
-    rm -f "$TMP_DIST"
+
+    # Add distribution to metrics JSON (in memory, fix jq usage)
+    jq --arg dist "$DIST_JSON" '.backend_distribution = ($dist | fromjson)' loadtest_results/metrics_$ALGO.json > loadtest_results/metrics_${ALGO}_tmp.json && mv loadtest_results/metrics_${ALGO}_tmp.json loadtest_results/metrics_$ALGO.json
+
+    # Add distribution to report text
+    echo -e "\nBackend percentage distribution:\n$DIST_SUMMARY" >> loadtest_results/report_$ALGO.txt
 
     # Show summary
-    echo "\nSummary for $ALGO:" | tee -a loadtest_results/summary.txt
-    grep "requests" loadtest_results/report_$ALGO.txt | tee -a loadtest_results/summary.txt
-    grep "latencies" loadtest_results/report_$ALGO.txt | tee -a loadtest_results/summary.txt
-    grep "success" loadtest_results/report_$ALGO.txt | tee -a loadtest_results/summary.txt
-    grep "errors" loadtest_results/report_$ALGO.txt | tee -a loadtest_results/summary.txt
-    echo "Backend percentage distribution:" | tee -a loadtest_results/summary.txt
-    cat loadtest_results/distribution_$ALGO.txt | tee -a loadtest_results/summary.txt
+    echo "\nSummary for $ALGO:"
+    cat loadtest_results/report_$ALGO.txt
 
     # Kill servers before next run
     pkill -f './backend' || true
