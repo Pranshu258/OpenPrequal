@@ -16,7 +16,7 @@ sleep 1
 
 
 # Build backend and proxy in builds/
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.." # Change to project root
 go build -o builds/backend ./cmd/backend/main.go
 go build -o builds/proxy ./cmd/proxy/main.go
 
