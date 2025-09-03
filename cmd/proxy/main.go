@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 
+	"github.com/Pranshu258/OpenPrequal/pkg/contracts"
 	"github.com/Pranshu258/OpenPrequal/pkg/loadbalancer"
 	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
@@ -122,6 +124,24 @@ func main() {
 			http.Error(w, "Proxy error", http.StatusBadGateway)
 		}
 		proxy.ServeHTTP(w, r)
+	})
+
+	// Heartbeat endpoint for backend registration
+	http.HandleFunc("/heartbeat", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var reqData contracts.HeartbeatRequest
+		err := json.NewDecoder(r.Body).Decode(&reqData)
+		if err != nil || reqData.URL == "" {
+			http.Error(w, "Invalid or missing url in JSON body", http.StatusBadRequest)
+			return
+		}
+		reg.RegisterBackend(reqData.URL)
+		log.Printf("Registered backend: %s", reqData.URL)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
 	})
 
 	log.Println("Load balancer listening on :8080 (algorithm:", lbType, ", registry:", regType, ")")

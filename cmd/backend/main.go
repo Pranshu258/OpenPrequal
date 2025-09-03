@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -47,6 +48,30 @@ func main() {
 		}
 		json.NewEncoder(w).Encode(resp)
 	})
+
+	// Heartbeat goroutine to register with proxy
+	proxyAddr := os.Getenv("PROXY_ADDR")
+	if proxyAddr == "" {
+		proxyAddr = "http://localhost:8080"
+	}
+	go func() {
+		for {
+			reqBody := map[string]string{"url": url}
+			data, err := json.Marshal(reqBody)
+			if err != nil {
+				log.Printf("Heartbeat marshal error: %v", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			resp, err := http.Post(proxyAddr+"/heartbeat", "application/json", bytes.NewReader(data))
+			if err != nil {
+				log.Printf("Heartbeat failed: %v", err)
+			} else {
+				resp.Body.Close()
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}()
 
 	log.Printf("Backend server listening at %s\n", url)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
