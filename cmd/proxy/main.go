@@ -142,6 +142,10 @@ func main() {
 					if b, exists := memReg.Backends[backend.URL]; exists {
 						b.RequestsInFlight = result.RequestsInFlight
 						b.AverageLatencyMs = result.AverageLatencyMs
+						// Calculate RIF (Requests In Flight) and update probe/hotcold
+						rif := float64(result.RequestsInFlight)
+						b.Probe.AddRIF(rif)
+						b.HotCold = b.Probe.Status(rif)
 					}
 				}
 			}
