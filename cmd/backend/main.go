@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -26,6 +28,17 @@ func main() {
 
 	metricsManager := metrics.NewMetricsManager()
 
+	// Load simulation parameters
+	const (
+		RIF_THRESHOLD     = 500
+		BASE_LATENCY_MS   = 50.0 // 50ms base latency
+		LATENCY_STDDEV_MS = 10.0 // 10ms standard deviation
+		LATENCY_PER_RIF   = 1.0  // 1ms additional latency per RIF
+	)
+
+	// Random jitter multiplier for this backend instance (1.0 - 3.0)
+	jitterMultiplier := 1.0 + rand.Float64()*2.0
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		metricsManager.IncInFlight()
@@ -34,8 +47,26 @@ func main() {
 			metricsManager.AddLatency(time.Since(start))
 		}()
 
+		// Simulate backend load based on current RIF
+		rifCount := metricsManager.InFlight()
+
+		// Base latency with gaussian noise
+		baseLatency := math.Max(0, rand.NormFloat64()*LATENCY_STDDEV_MS+BASE_LATENCY_MS)
+
+		// Additional jitter based on RIF count
+		rifJitter := rand.Float64() * float64(rifCount) * LATENCY_PER_RIF
+
+		// Total simulated latency
+		totalLatencyMs := jitterMultiplier * (baseLatency + rifJitter)
+		simulatedLatency := time.Duration(totalLatencyMs * float64(time.Millisecond))
+
+		log.Printf("[Backend] Processing request with RIF=%d, simulated latency=%.3fms", rifCount, totalLatencyMs)
+
+		// Simulate the work
+		time.Sleep(simulatedLatency)
+
 		w.Header().Set("X-Backend-Url", url)
-		msg := fmt.Sprintf("Hello from backend at %s\n", url)
+		msg := fmt.Sprintf("Hello from backend at %s (processed in %.3fms with RIF=%d)\n", url, totalLatencyMs, rifCount)
 		w.Write([]byte(msg))
 	})
 
