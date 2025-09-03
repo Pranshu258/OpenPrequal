@@ -5,7 +5,7 @@ import "github.com/Pranshu258/OpenPrequal/pkg/probe"
 // BackendRegistry defines the interface for backend management
 // (listing, adding, removing, etc.)
 type BackendRegistry interface {
-	ListBackends() []BackendInfo
+	ListBackends() []*BackendInfo
 	RegisterBackend(url string)
 	RemoveBackend(url string)
 }
@@ -34,10 +34,10 @@ func NewInMemoryBackendRegistry(urls []string) *InMemoryBackendRegistry {
 	return &InMemoryBackendRegistry{Backends: backends}
 }
 
-func (r *InMemoryBackendRegistry) ListBackends() []BackendInfo {
-	result := make([]BackendInfo, 0, len(r.Backends))
+func (r *InMemoryBackendRegistry) ListBackends() []*BackendInfo {
+	result := make([]*BackendInfo, 0, len(r.Backends))
 	for _, b := range r.Backends {
-		result = append(result, *b)
+		result = append(result, b)
 	}
 	return result
 }

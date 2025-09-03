@@ -1,8 +1,11 @@
 package loadbalancer
 
 import (
+	"log"
 	"math"
 	"time"
+
+	"github.com/Pranshu258/OpenPrequal/pkg/metrics"
 
 	"github.com/Pranshu258/OpenPrequal/pkg/probe"
 	"github.com/Pranshu258/OpenPrequal/pkg/registry"
@@ -11,46 +14,52 @@ import (
 // PrequalLoadBalancer selects the cold backend with lowest latency, or if all are hot, the one with lowest RIF
 // Implements LoadBalancer interface
 type PrequalLoadBalancer struct {
-	Registry      registry.BackendRegistry
-	probeIdx      int
-	lastProbeTime int64
+	Registry          registry.BackendRegistry
+	probeQueue        chan string
+	stopProbe         chan struct{}
+	probeHistory      map[string]struct{}
+	lastProbeTime     map[string]int64
+	requestTimestamps []int64
 }
 
 func NewPrequalLoadBalancer(reg registry.BackendRegistry) *PrequalLoadBalancer {
-	return &PrequalLoadBalancer{Registry: reg}
+	lb := &PrequalLoadBalancer{
+		Registry:          reg,
+		probeQueue:        make(chan string, 100),
+		stopProbe:         make(chan struct{}),
+		probeHistory:      make(map[string]struct{}),
+		lastProbeTime:     make(map[string]int64),
+		requestTimestamps: make([]int64, 0, 1000),
+	}
+	lb.startProbeScheduler()
+	return lb
 }
 
 func (lb *PrequalLoadBalancer) PickBackend() string {
 	backends := lb.Registry.ListBackends()
 	n := len(backends)
 	if n == 0 {
+		log.Println("[Prequal] No backends available.")
 		return ""
 	}
 
-	// Probe scheduling logic: one probe every 10ms, round robin
-	now := time.Now().UnixNano() / 1e6 // ms
-	if now-lb.lastProbeTime >= 10 || lb.lastProbeTime == 0 {
-		go func(idx int) {
-			url := backends[idx%n].URL
-			result, err := probe.ProbeBackend(url)
-			if err == nil {
-				if memReg, ok := lb.Registry.(*registry.InMemoryBackendRegistry); ok {
-					if b, exists := memReg.Backends[url]; exists {
-						b.RequestsInFlight = result.RequestsInFlight
-						b.AverageLatencyMs = result.AverageLatencyMs
-						rif := float64(result.RequestsInFlight)
-						b.Probe.AddRIF(rif)
-						b.HotCold = b.Probe.Status(rif)
-					}
-				}
-			}
-		}(lb.probeIdx)
-		lb.probeIdx = (lb.probeIdx + 1) % n
-		lb.lastProbeTime = now
+	// Track request timestamp for RPS calculation
+	now := time.Now().UnixNano() / 1e9 // seconds
+	lb.requestTimestamps = append(lb.requestTimestamps, now)
+	window := int64(1) // 1 second window
+	cutoff := now - window
+	// Remove old timestamps
+	for len(lb.requestTimestamps) > 0 && lb.requestTimestamps[0] < cutoff {
+		lb.requestTimestamps = lb.requestTimestamps[1:]
+	}
+
+	log.Printf("[Prequal] Backend info snapshot:")
+	for i, b := range backends {
+		log.Printf("  [%d] URL=%s HotCold=%s Latency=%.6f RIF=%d", i, b.URL, b.HotCold, b.AverageLatencyMs, b.RequestsInFlight)
 	}
 
 	// ...existing backend selection logic...
-	coldIdx := -1
+	coldIndices := []int{}
 	coldLatency := math.MaxFloat64
 	allHot := true
 
@@ -59,27 +68,158 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 			allHot = false
 			if b.AverageLatencyMs < coldLatency {
 				coldLatency = b.AverageLatencyMs
-				coldIdx = i
+				coldIndices = []int{i}
+			} else if b.AverageLatencyMs == coldLatency {
+				coldIndices = append(coldIndices, i)
 			}
 		}
 	}
 
-	if !allHot && coldIdx != -1 {
-		return backends[coldIdx].URL
+	if !allHot && len(coldIndices) > 0 {
+		idx := coldIndices[0]
+		if len(coldIndices) > 1 {
+			idx = randInt(len(coldIndices))
+		}
+		log.Printf("[Prequal] Selected cold backend: %s (latency=%.6f)", backends[idx].URL, backends[idx].AverageLatencyMs)
+		return backends[idx].URL
 	}
 
 	// If all are hot, pick backend with lowest RequestsInFlight
 	minRIF := math.MaxFloat64
-	minRIFIdx := -1
+	minRIFIndices := []int{}
 	for i, b := range backends {
 		rif := float64(b.RequestsInFlight)
 		if rif < minRIF {
 			minRIF = rif
-			minRIFIdx = i
+			minRIFIndices = []int{i}
+		} else if rif == minRIF {
+			minRIFIndices = append(minRIFIndices, i)
 		}
 	}
-	if minRIFIdx != -1 {
-		return backends[minRIFIdx].URL
+	if len(minRIFIndices) > 0 {
+		idx := minRIFIndices[0]
+		if len(minRIFIndices) > 1 {
+			idx = randInt(len(minRIFIndices))
+		}
+		log.Printf("[Prequal] Selected hot backend: %s (RIF=%d)", backends[idx].URL, backends[idx].RequestsInFlight)
+		return backends[idx].URL
 	}
-	return backends[0].URL
+	idx := 0
+	if n > 1 {
+		idx = randInt(n)
+	}
+	log.Printf("[Prequal] Fallback: returning random backend: %s", backends[idx].URL)
+	return backends[idx].URL
+}
+
+// startProbeScheduler starts a background goroutine that schedules and consumes probe tasks
+func (lb *PrequalLoadBalancer) startProbeScheduler() {
+	go func() {
+		for {
+			select {
+			case <-lb.stopProbe:
+				return
+			default:
+				backends := lb.Registry.ListBackends()
+				healthy := make([]string, 0, len(backends))
+				for _, b := range backends {
+					if b.HotCold != "" { // treat non-empty HotCold as healthy
+						healthy = append(healthy, b.URL)
+					}
+				}
+				now := time.Now().UnixNano() / 1e9 // seconds
+				// Forced probe: every backend at least once every 20s
+				minProbeInterval := int64(20)
+				for _, url := range healthy {
+					last := lb.lastProbeTime[url]
+					if now-last >= minProbeInterval {
+						lb.lastProbeTime[url] = now
+						select {
+						case lb.probeQueue <- url:
+							log.Printf("[Prequal] Forced probe scheduled for backend: %s", url)
+						default:
+							log.Printf("[Prequal] Probe queue full, dropping forced probe for backend: %s", url)
+						}
+					}
+				}
+				// RPS-based probabilistic probe
+				window := int64(1)
+				cutoff := now - window
+				count := 0
+				for _, ts := range lb.requestTimestamps {
+					if ts >= cutoff {
+						count++
+					}
+				}
+				rps := float64(count)
+				if rps < 1e-6 {
+					rps = 1e-6
+				}
+				R := 5.0 / rps
+				if R > 1.0 {
+					R = 1.0
+				}
+				// Without replacement
+				available := make([]string, 0, len(healthy))
+				for _, url := range healthy {
+					if _, seen := lb.probeHistory[url]; !seen {
+						available = append(available, url)
+					}
+				}
+				if len(available) == 0 {
+					lb.probeHistory = make(map[string]struct{})
+					available = healthy
+				}
+				if len(available) > 0 && randFloat() < R {
+					idx := 0
+					if len(available) > 1 {
+						idx = randInt(len(available))
+					}
+					url := available[idx]
+					lb.probeHistory[url] = struct{}{}
+					lb.lastProbeTime[url] = now
+					select {
+					case lb.probeQueue <- url:
+						log.Printf("[Prequal] Probabilistic probe scheduled for backend: %s (R=%.3f, RPS=%.6f)", url, R, rps)
+					default:
+						log.Printf("[Prequal] Probe queue full, dropping probabilistic probe for backend: %s", url)
+					}
+				}
+				// Consume probe tasks
+				for {
+					select {
+					case url := <-lb.probeQueue:
+						result, err := probe.ProbeBackend(url)
+						if err == nil {
+							if memReg, ok := lb.Registry.(*registry.InMemoryBackendRegistry); ok {
+								if b, exists := memReg.Backends[url]; exists {
+									b.RequestsInFlight = result.RequestsInFlight
+									b.AverageLatencyMs = result.AverageLatencyMs
+									rif := float64(result.RequestsInFlight)
+									b.Probe.AddRIF(rif)
+									b.HotCold = b.Probe.Status(rif)
+									log.Printf("[Prequal] Probe updated backend: %s Latency=%.6f RIF=%d HotCold=%s", url, b.AverageLatencyMs, b.RequestsInFlight, b.HotCold)
+									metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.HotCold)
+								}
+							}
+						} else {
+							log.Printf("[Prequal] Probe failed for backend: %s, err: %v", url, err)
+						}
+					default:
+						// Exit inner loop and continue scheduling
+						time.Sleep(20 * time.Millisecond)
+						return
+					}
+				}
+			}
+		}
+	}()
+}
+
+func randFloat() float64 {
+	return float64(time.Now().UnixNano()%10000) / 10000.0
+}
+
+func randInt(n int) int {
+	return int(time.Now().UnixNano() % int64(n))
 }

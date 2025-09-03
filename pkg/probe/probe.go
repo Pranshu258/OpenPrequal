@@ -2,6 +2,8 @@ package probe
 
 import (
 	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -55,13 +57,23 @@ func ProbeBackend(url string) (*contracts.ProbeResponse, error) {
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(url + "/metrics")
 	if err != nil {
+		log.Printf("[ProbeBackend] Error fetching metrics from %s: %v", url, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var probeResp contracts.ProbeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&probeResp); err != nil {
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[ProbeBackend] Error reading response body from %s: %v", url, err)
 		return nil, err
 	}
+	log.Printf("[ProbeBackend] Raw response from %s: %s", url, string(bodyBytes))
+
+	var probeResp contracts.ProbeResponse
+	if err := json.Unmarshal(bodyBytes, &probeResp); err != nil {
+		log.Printf("[ProbeBackend] Error decoding JSON from %s: %v", url, err)
+		return nil, err
+	}
+	log.Printf("[ProbeBackend] Decoded ProbeResponse from %s: RequestsInFlight=%d, AverageLatencyMs=%.6f", url, probeResp.RequestsInFlight, probeResp.AverageLatencyMs)
 	return &probeResp, nil
 }

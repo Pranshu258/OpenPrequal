@@ -42,10 +42,14 @@ func main() {
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		avg := metricsManager.AvgLatencyLast5Min()
 		inFlight := metricsManager.InFlight()
+		avgLatencyMs := float64(avg.Nanoseconds()) / 1e6 // Convert nanoseconds to milliseconds with precision
+
+		log.Printf("[/metrics] Reporting: InFlight=%d AvgLatency=%.3f ms", inFlight, avgLatencyMs)
+
 		w.Header().Set("Content-Type", "application/json")
 		resp := contracts.ProbeResponse{
 			RequestsInFlight: int64(inFlight),
-			AverageLatencyMs: float64(avg.Milliseconds()),
+			AverageLatencyMs: avgLatencyMs,
 		}
 		json.NewEncoder(w).Encode(resp)
 	})
