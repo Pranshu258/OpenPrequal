@@ -7,7 +7,7 @@ set -e
 NUM_BACKENDS=${1:-3}
 DURATION=${2:-30s}
 RATE=${3:-50}
-ALGOS=(random roundrobin)
+ALGOS=(random roundrobin leastrif leastlatency)
 
 mkdir -p logs
 mkdir -p builds

@@ -30,6 +30,10 @@ func createLoadBalancer(reg registry.BackendRegistry, lbType string) loadbalance
 		return loadbalancer.NewRandomLoadBalancer(reg)
 	case "roundrobin":
 		return loadbalancer.NewRoundRobinLoadBalancer(reg)
+	case "leastrif":
+		return loadbalancer.NewLeastRequestsInFlightLoadBalancer(reg)
+	case "leastlatency":
+		return loadbalancer.NewLeastLatencyLoadBalancer(reg)
 	default:
 		return loadbalancer.NewRandomLoadBalancer(reg)
 	}
