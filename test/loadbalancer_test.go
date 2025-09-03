@@ -1,15 +1,16 @@
-package loadbalancer
+package test
 
 import (
 	"testing"
 
-	"github.com/Pranshu258/OpenPrequal/cmd/proxy/internal/registry"
+	"github.com/Pranshu258/OpenPrequal/pkg/loadbalancer"
+	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
 
 func TestRandomLoadBalancer_PickBackend(t *testing.T) {
 	backends := []string{"http://localhost:8081", "http://localhost:8082"}
 	reg := registry.NewInMemoryBackendRegistry(backends)
-	lb := NewRandomLoadBalancer(reg)
+	lb := loadbalancer.NewRandomLoadBalancer(reg)
 	picked := lb.PickBackend()
 	found := false
 	for _, b := range backends {
@@ -26,7 +27,7 @@ func TestRandomLoadBalancer_PickBackend(t *testing.T) {
 func TestRoundRobinLoadBalancer_PickBackend(t *testing.T) {
 	backends := []string{"http://localhost:8081", "http://localhost:8082"}
 	reg := registry.NewInMemoryBackendRegistry(backends)
-	lb := NewRoundRobinLoadBalancer(reg)
+	lb := loadbalancer.NewRoundRobinLoadBalancer(reg)
 	first := lb.PickBackend()
 	second := lb.PickBackend()
 	third := lb.PickBackend()
