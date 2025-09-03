@@ -35,3 +35,4 @@ logs
 */__pycache__
 .venv
 builds/
+benchmarks/
