@@ -34,6 +34,10 @@ func createLoadBalancer(reg registry.BackendRegistry, lbType string) loadbalance
 		return loadbalancer.NewLeastRequestsInFlightLoadBalancer(reg)
 	case "leastlatency":
 		return loadbalancer.NewLeastLatencyLoadBalancer(reg)
+	case "power2_leastrif":
+		return loadbalancer.NewPowerOfTwoLeastRIFLoadBalancer(reg)
+	case "power2_leastlatency":
+		return loadbalancer.NewPowerOfTwoLeastLatencyLoadBalancer(reg)
 	default:
 		return loadbalancer.NewRandomLoadBalancer(reg)
 	}
@@ -120,7 +124,7 @@ func main() {
 
 	// Periodically probe backends and update metrics
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 		for {
 			<-ticker.C
