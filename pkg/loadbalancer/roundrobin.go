@@ -3,7 +3,7 @@ package loadbalancer
 import (
 	"sync"
 
-	"github.com/Pranshu258/OpenPrequal/cmd/proxy/internal/registry"
+	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
 
 // RoundRobinLoadBalancer implements round-robin selection

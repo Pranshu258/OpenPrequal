@@ -3,7 +3,7 @@ package loadbalancer
 import (
 	"math/rand"
 
-	"github.com/Pranshu258/OpenPrequal/cmd/proxy/internal/registry"
+	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
 
 // RandomLoadBalancer implements the random selection strategy
