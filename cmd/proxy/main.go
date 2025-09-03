@@ -38,6 +38,8 @@ func createLoadBalancer(reg registry.BackendRegistry, lbType string) loadbalance
 		return loadbalancer.NewPowerOfTwoLeastRIFLoadBalancer(reg)
 	case "power2_leastlatency":
 		return loadbalancer.NewPowerOfTwoLeastLatencyLoadBalancer(reg)
+	case "prequal":
+		return loadbalancer.NewPrequalLoadBalancer(reg)
 	default:
 		return loadbalancer.NewRandomLoadBalancer(reg)
 	}
