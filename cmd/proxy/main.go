@@ -7,9 +7,11 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/Pranshu258/OpenPrequal/pkg/contracts"
 	"github.com/Pranshu258/OpenPrequal/pkg/loadbalancer"
+	"github.com/Pranshu258/OpenPrequal/pkg/probe"
 	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
 
@@ -111,6 +113,32 @@ func main() {
 
 	lbType := getLoadBalancerType()
 	lb := createLoadBalancer(reg, lbType)
+
+	// Periodically probe backends and update metrics
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for {
+			<-ticker.C
+			// ListBackends returns []BackendInfo
+			backends := reg.ListBackends()
+			for _, backend := range backends {
+				result, err := probe.ProbeBackend(backend.URL)
+				if err != nil {
+					log.Printf("Probe failed for %s: %v", backend.URL, err)
+					continue
+				}
+				// Update metrics in registry
+				// Only works for InMemoryBackendRegistry
+				if memReg, ok := reg.(*registry.InMemoryBackendRegistry); ok {
+					if b, exists := memReg.Backends[backend.URL]; exists {
+						b.RequestsInFlight = result.RequestsInFlight
+						b.AverageLatencyMs = result.AverageLatencyMs
+					}
+				}
+			}
+		}
+	}()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		backendURL, err := url.Parse(lb.PickBackend())

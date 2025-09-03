@@ -3,38 +3,44 @@ package registry
 // BackendRegistry defines the interface for backend management
 // (listing, adding, removing, etc.)
 type BackendRegistry interface {
-	ListBackends() []string
+	ListBackends() []BackendInfo
 	RegisterBackend(url string)
 	RemoveBackend(url string)
 }
 
+type BackendInfo struct {
+	URL              string
+	RequestsInFlight int64
+	AverageLatencyMs float64
+}
+
 type InMemoryBackendRegistry struct {
-	backends []string
+	Backends map[string]*BackendInfo // key: URL
 }
 
-func NewInMemoryBackendRegistry(backends []string) *InMemoryBackendRegistry {
-	return &InMemoryBackendRegistry{backends: backends}
+func NewInMemoryBackendRegistry(urls []string) *InMemoryBackendRegistry {
+	backends := make(map[string]*BackendInfo)
+	for _, url := range urls {
+		backends[url] = &BackendInfo{URL: url}
+	}
+	return &InMemoryBackendRegistry{Backends: backends}
 }
 
-func (r *InMemoryBackendRegistry) ListBackends() []string {
-	return r.backends
+func (r *InMemoryBackendRegistry) ListBackends() []BackendInfo {
+	result := make([]BackendInfo, 0, len(r.Backends))
+	for _, b := range r.Backends {
+		result = append(result, *b)
+	}
+	return result
 }
 
 func (r *InMemoryBackendRegistry) RegisterBackend(url string) {
-	for _, b := range r.backends {
-		if b == url {
-			return // already registered
-		}
+	if _, exists := r.Backends[url]; exists {
+		return // already registered
 	}
-	r.backends = append(r.backends, url)
+	r.Backends[url] = &BackendInfo{URL: url}
 }
 
 func (r *InMemoryBackendRegistry) RemoveBackend(url string) {
-	newBackends := make([]string, 0, len(r.backends))
-	for _, b := range r.backends {
-		if b != url {
-			newBackends = append(newBackends, b)
-		}
-	}
-	r.backends = newBackends
+	delete(r.Backends, url)
 }

@@ -27,5 +27,5 @@ func (lb *RoundRobinLoadBalancer) PickBackend() string {
 	}
 	backend := backends[lb.index%len(backends)]
 	lb.index = (lb.index + 1) % len(backends)
-	return backend
+	return backend.URL
 }

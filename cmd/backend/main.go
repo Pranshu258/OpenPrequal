@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Pranshu258/OpenPrequal/pkg/contracts"
 	"github.com/Pranshu258/OpenPrequal/pkg/metrics"
 )
 
@@ -42,9 +43,9 @@ func main() {
 		avg := metricsManager.AvgLatencyLast5Min()
 		inFlight := metricsManager.InFlight()
 		w.Header().Set("Content-Type", "application/json")
-		resp := metrics.MetricsResponse{
-			InFlight:         int64(inFlight),
-			AvgLatency5MinMs: avg.Milliseconds(),
+		resp := contracts.ProbeResponse{
+			RequestsInFlight: int64(inFlight),
+			AverageLatencyMs: float64(avg.Milliseconds()),
 		}
 		json.NewEncoder(w).Encode(resp)
 	})

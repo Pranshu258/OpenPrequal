@@ -21,5 +21,5 @@ func (lb *RandomLoadBalancer) PickBackend() string {
 	if len(backends) == 0 {
 		return ""
 	}
-	return backends[rand.Intn(len(backends))]
+	return backends[rand.Intn(len(backends))].URL
 }
