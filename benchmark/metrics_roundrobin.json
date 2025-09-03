@@ -1,0 +1,38 @@
+{
+  "latencies": {
+    "total": 9530210412,
+    "mean": 1588368,
+    "50th": 1636310,
+    "95th": 1891572,
+    "99th": 2221288,
+    "max": 23913417
+  },
+  "bytes_in": {
+    "total": 264000,
+    "mean": 44
+  },
+  "bytes_out": {
+    "total": 0,
+    "mean": 0
+  },
+  "earliest": "2025-09-02T19:28:48.909709083-07:00",
+  "latest": "2025-09-02T19:29:18.904474792-07:00",
+  "end": "2025-09-02T19:29:18.906162917-07:00",
+  "duration": 29994765709,
+  "wait": 1688125,
+  "requests": 6000,
+  "rate": 200.03490136279632,
+  "throughput": 200.02364390150666,
+  "success": 1,
+  "status_codes": {
+    "200": 6000
+  },
+  "errors": [],
+  "backend_distribution": {
+    "http://localhost:8085": 20.0000,
+    "http://localhost:8084": 20.0000,
+    "http://localhost:8083": 20.0000,
+    "http://localhost:8082": 20.0000,
+    "http://localhost:8081": 20.0000
+  }
+}
