@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/Pranshu258/OpenPrequal/cmd/proxy/internal/loadbalancer"
-	"github.com/Pranshu258/OpenPrequal/cmd/proxy/internal/registry"
+	"github.com/Pranshu258/OpenPrequal/pkg/loadbalancer"
+	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
 
 // getLoadBalancerType returns the load balancer type from env/config, defaulting to "random"
