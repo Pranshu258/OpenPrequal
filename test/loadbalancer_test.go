@@ -35,3 +35,29 @@ func TestRoundRobinLoadBalancer_PickBackend(t *testing.T) {
 		t.Errorf("RoundRobin sequence incorrect: got %v, %v, %v; want %v, %v, %v", first, second, third, backends[0], backends[1], backends[0])
 	}
 }
+
+// Test LeastRequestsInFlightLoadBalancer
+func TestLeastRequestsInFlightLoadBalancer_PickBackend(t *testing.T) {
+	reg := registry.NewInMemoryBackendRegistry([]string{"a", "b", "c"})
+	reg.Backends["a"].RequestsInFlight = 5
+	reg.Backends["b"].RequestsInFlight = 2
+	reg.Backends["c"].RequestsInFlight = 7
+	lb := loadbalancer.NewLeastRequestsInFlightLoadBalancer(reg)
+	picked := lb.PickBackend()
+	if picked != "b" {
+		t.Errorf("LeastRequestsInFlightLoadBalancer picked %v, want 'b'", picked)
+	}
+}
+
+// Test LeastLatencyLoadBalancer
+func TestLeastLatencyLoadBalancer_PickBackend(t *testing.T) {
+	reg := registry.NewInMemoryBackendRegistry([]string{"x", "y", "z"})
+	reg.Backends["x"].AverageLatencyMs = 100.0
+	reg.Backends["y"].AverageLatencyMs = 50.0
+	reg.Backends["z"].AverageLatencyMs = 200.0
+	lb := loadbalancer.NewLeastLatencyLoadBalancer(reg)
+	picked := lb.PickBackend()
+	if picked != "y" {
+		t.Errorf("LeastLatencyLoadBalancer picked %v, want 'y'", picked)
+	}
+}
