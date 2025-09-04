@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -36,6 +37,21 @@ func NewMetricsManager() *MetricsManager {
 		latencies: make([]requestLatency, 0, 1000),
 		rifBins:   make(map[int][]rifLatencyEntry),
 	}
+}
+
+// medianDuration returns the median of a slice of durations.
+func medianDuration(vals []time.Duration) time.Duration {
+	n := len(vals)
+	if n == 0 {
+		return 0
+	}
+	sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+	if n%2 == 1 {
+		return vals[n/2]
+	}
+	// even count: average two middle values
+	a, b := vals[n/2-1], vals[n/2]
+	return (a + b) / 2
 }
 
 func (m *MetricsManager) IncInFlight() {
@@ -127,13 +143,14 @@ func (m *MetricsManager) GetAvgLatencyForRIF(targetRIF int) time.Duration {
 	// Compute target bin and check if we have data for this bin
 	targetBin := targetRIF / rifBinSize
 	if entries, exists := m.rifBins[targetBin]; exists && len(entries) > 0 {
-		var sum time.Duration
+		// compute median latency for this bin
+		durations := make([]time.Duration, 0, len(entries))
 		for _, entry := range entries {
-			sum += entry.duration
+			durations = append(durations, entry.duration)
 		}
-		avg := sum / time.Duration(len(entries))
-		log.Printf("[MetricsManager] GetAvgLatencyForRIF: Found data in bin=%d for RIF=%d, avg=%v", targetBin, targetRIF, avg)
-		return avg
+		med := medianDuration(durations)
+		log.Printf("[MetricsManager] GetAvgLatencyForRIF: Found data in bin=%d for RIF=%d, median=%v", targetBin, targetRIF, med)
+		return med
 	}
 
 	// No exact match, try interpolation
@@ -221,14 +238,14 @@ func (m *MetricsManager) interpolateLatencyForRIF(targetRIF int) time.Duration {
 
 // calculateAvgForRIF calculates average latency for a specific RIF (assumes mutex is already held)
 func (m *MetricsManager) calculateAvgForRIF(rif int) time.Duration {
+	// calculate median latency for a specific RIF bin
 	entries, exists := m.rifBins[rif]
 	if !exists || len(entries) == 0 {
 		return 0
 	}
-
-	var sum time.Duration
+	durations := make([]time.Duration, 0, len(entries))
 	for _, entry := range entries {
-		sum += entry.duration
+		durations = append(durations, entry.duration)
 	}
-	return sum / time.Duration(len(entries))
+	return medianDuration(durations)
 }

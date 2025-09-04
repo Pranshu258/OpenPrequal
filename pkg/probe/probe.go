@@ -68,6 +68,19 @@ type Probe struct {
 	maxHistory      int
 }
 
+// AverageLatency returns the arithmetic mean of recent latencies
+func (p *Probe) AverageLatency() float64 {
+	n := len(p.recentLatencies)
+	if n == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, v := range p.recentLatencies {
+		sum += v
+	}
+	return sum / float64(n)
+}
+
 func NewProbe(historySize int) *Probe {
 	return &Probe{
 		recentRIFs:      make([]float64, 0, historySize),

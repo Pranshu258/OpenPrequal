@@ -86,10 +86,11 @@ func (lb *PrequalLoadBalancer) selectColdBackend(backends []*registry.BackendInf
 		if b.HotCold != "cold" {
 			continue
 		}
-		if b.RIFKeyedLatencyMs < coldLatency {
-			coldLatency = b.Probe.MedianLatency()
+		latency := b.Probe.AverageLatency()
+		if latency < coldLatency {
+			coldLatency = latency
 			coldIndices = []int{i}
-		} else if b.RIFKeyedLatencyMs == coldLatency {
+		} else if latency == coldLatency {
 			coldIndices = append(coldIndices, i)
 		}
 	}
