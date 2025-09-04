@@ -16,7 +16,8 @@ import (
 const (
 	requestWindowSec       = int64(1)              // sliding window in seconds for RPS
 	forcedProbeIntervalSec = int64(20)             // min seconds between forced probes per backend
-	probeSleepDuration     = 20 * time.Millisecond // sleep between probe consumption loops
+	probeSleepDuration     = 20 * time.Millisecond // sleep between probe scheduling loops
+	probeWorkerCount       = 4                     // number of parallel probe workers
 	maxRequestBuffer       = 100000                // capacity for ring buffer of request timestamps
 )
 
@@ -33,6 +34,7 @@ type PrequalLoadBalancer struct {
 	rpsMu                      sync.Mutex // separate lock for request rate buffer
 	mu                         sync.Mutex
 	wg                         sync.WaitGroup
+	workersWg                  sync.WaitGroup // wait for probe workers
 	rand                       *rand.Rand
 }
 
@@ -222,36 +224,37 @@ func (lb *PrequalLoadBalancer) scheduleProbabilisticProbe(urls []string, now int
 	}
 }
 
-// consumeProbes drains the queue and executes probes
-func (lb *PrequalLoadBalancer) consumeProbes() {
-	for {
-		select {
-		case url := <-lb.probeQueue:
-			result, err := probe.ProbeBackend(url)
-			if err != nil {
-				log.Printf("[Prequal] Probe failed for backend: %s, err: %v", url, err)
-				continue
+// probeWorker processes probeQueue entries concurrently
+func (lb *PrequalLoadBalancer) probeWorker() {
+	defer lb.workersWg.Done()
+	for url := range lb.probeQueue {
+		result, err := probe.ProbeBackend(url)
+		if err != nil {
+			log.Printf("[Prequal] Probe failed for backend: %s, err: %v", url, err)
+			continue
+		}
+		if memReg, ok := lb.Registry.(*registry.InMemoryBackendRegistry); ok {
+			if b, exists := memReg.Backends[url]; exists {
+				b.RequestsInFlight = result.RequestsInFlight
+				b.AverageLatencyMs = result.AverageLatencyMs
+				b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
+				rif := float64(result.RequestsInFlight)
+				b.Probe.AddRIF(rif)
+				b.HotCold = b.Probe.Status(rif)
+				metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.HotCold)
 			}
-			if memReg, ok := lb.Registry.(*registry.InMemoryBackendRegistry); ok {
-				if b, exists := memReg.Backends[url]; exists {
-					b.RequestsInFlight = result.RequestsInFlight
-					b.AverageLatencyMs = result.AverageLatencyMs
-					b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
-					rif := float64(result.RequestsInFlight)
-					b.Probe.AddRIF(rif)
-					b.HotCold = b.Probe.Status(rif)
-					log.Printf("[Prequal] Probe updated backend: %s AvgLatency=%.6f RIFKeyedLatency=%.6f RIF=%d HotCold=%s", url, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.RequestsInFlight, b.HotCold)
-					metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.HotCold)
-				}
-			}
-		default:
-			return
 		}
 	}
 }
 
-// startProbeScheduler starts a background goroutine that schedules and consumes probe tasks
+// startProbeScheduler launches scheduler and probe workers
 func (lb *PrequalLoadBalancer) startProbeScheduler() {
+	// spawn probe worker pool
+	for i := 0; i < probeWorkerCount; i++ {
+		lb.workersWg.Add(1)
+		go lb.probeWorker()
+	}
+	// scheduling loop
 	lb.wg.Add(1)
 	go func() {
 		defer lb.wg.Done()
@@ -260,6 +263,8 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 		for {
 			select {
 			case <-lb.stopProbe:
+				// stop scheduling and close queue to signal workers
+				close(lb.probeQueue)
 				return
 			case <-ticker.C:
 				backends := lb.Registry.ListBackends()
@@ -267,14 +272,14 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 				now := time.Now().UnixNano() / 1e9
 				lb.scheduleForcedProbes(healthy, now)
 				lb.scheduleProbabilisticProbe(healthy, now)
-				lb.consumeProbes()
 			}
 		}
 	}()
 }
 
-// Stop gracefully shuts down the probe scheduler
+// Stop gracefully shuts down scheduler and workers
 func (lb *PrequalLoadBalancer) Stop() {
 	close(lb.stopProbe)
 	lb.wg.Wait()
+	lb.workersWg.Wait()
 }
