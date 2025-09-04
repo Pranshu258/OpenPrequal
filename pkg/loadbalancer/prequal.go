@@ -3,6 +3,8 @@ package loadbalancer
 import (
 	"log"
 	"math"
+	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/Pranshu258/OpenPrequal/pkg/metrics"
@@ -19,6 +21,9 @@ type PrequalLoadBalancer struct {
 	probeHistory      map[string]struct{}
 	lastProbeTime     map[string]int64
 	requestTimestamps []int64
+	mu                sync.Mutex
+	wg                sync.WaitGroup
+	rand              *rand.Rand
 }
 
 func NewPrequalLoadBalancer(reg registry.BackendRegistry) *PrequalLoadBalancer {
@@ -29,6 +34,7 @@ func NewPrequalLoadBalancer(reg registry.BackendRegistry) *PrequalLoadBalancer {
 		probeHistory:      make(map[string]struct{}),
 		lastProbeTime:     make(map[string]int64),
 		requestTimestamps: make([]int64, 0, 1000),
+		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	lb.startProbeScheduler()
 	return lb
@@ -42,22 +48,22 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 		return ""
 	}
 
-	// Track request timestamp for RPS calculation
+	// append request timestamp under lock
 	now := time.Now().UnixNano() / 1e9 // seconds
+	lb.mu.Lock()
 	lb.requestTimestamps = append(lb.requestTimestamps, now)
-	window := int64(1) // 1 second window
+	window := int64(1)
 	cutoff := now - window
-	// Remove old timestamps
 	for len(lb.requestTimestamps) > 0 && lb.requestTimestamps[0] < cutoff {
 		lb.requestTimestamps = lb.requestTimestamps[1:]
 	}
+	lb.mu.Unlock()
 
 	log.Printf("[Prequal] Backend info snapshot:")
 	for i, b := range backends {
 		log.Printf("  [%d] URL=%s HotCold=%s AvgLatency=%.6f RIFKeyedLatency=%.6f RIF=%d", i, b.URL, b.HotCold, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.RequestsInFlight)
 	}
 
-	// ...existing backend selection logic...
 	coldIndices := []int{}
 	coldLatency := math.MaxFloat64
 	allHot := true
@@ -80,9 +86,7 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 		// select among cold backends
 		sel := coldIndices[0]
 		if len(coldIndices) > 1 {
-			// pick random index in coldIndices
-			rnd := randInt(len(coldIndices))
-			sel = coldIndices[rnd]
+			sel = coldIndices[lb.rand.Intn(len(coldIndices))]
 		}
 		log.Printf("[Prequal] Selected cold backend: %s (RIF-keyed latency=%.6f)", backends[sel].URL, backends[sel].RIFKeyedLatencyMs)
 		return backends[sel].URL
@@ -104,15 +108,14 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 		// select among hot backends with minimal RIF
 		sel := minRIFIndices[0]
 		if len(minRIFIndices) > 1 {
-			rnd := randInt(len(minRIFIndices))
-			sel = minRIFIndices[rnd]
+			sel = minRIFIndices[lb.rand.Intn(len(minRIFIndices))]
 		}
 		log.Printf("[Prequal] Selected hot backend: %s (RIF=%d)", backends[sel].URL, backends[sel].RequestsInFlight)
 		return backends[sel].URL
 	}
 	idx := 0
 	if n > 1 {
-		idx = randInt(n)
+		idx = lb.rand.Intn(n)
 	}
 	log.Printf("[Prequal] Fallback: returning random backend: %s", backends[idx].URL)
 	return backends[idx].URL
@@ -120,7 +123,9 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 
 // startProbeScheduler starts a background goroutine that schedules and consumes probe tasks
 func (lb *PrequalLoadBalancer) startProbeScheduler() {
+	lb.wg.Add(1)
 	go func() {
+		defer lb.wg.Done()
 		for {
 			select {
 			case <-lb.stopProbe:
@@ -136,6 +141,7 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 				now := time.Now().UnixNano() / 1e9 // seconds
 				// Forced probe: every backend at least once every 20s
 				minProbeInterval := int64(20)
+				lb.mu.Lock()
 				for _, url := range healthy {
 					last := lb.lastProbeTime[url]
 					if now-last >= minProbeInterval {
@@ -148,15 +154,19 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 						}
 					}
 				}
+				lb.mu.Unlock()
+
 				// RPS-based probabilistic probe
-				window := int64(1)
-				cutoff := now - window
+				window := int64(1) // 1 second window for RPS
+				lb.mu.Lock()
 				count := 0
+				cutoff := now - window
 				for _, ts := range lb.requestTimestamps {
 					if ts >= cutoff {
 						count++
 					}
 				}
+				lb.mu.Unlock()
 				rps := float64(count)
 				if rps < 1e-6 {
 					rps = 1e-6
@@ -165,7 +175,9 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 				if R > 1.0 {
 					R = 1.0
 				}
+
 				// Without replacement
+				lb.mu.Lock()
 				available := make([]string, 0, len(healthy))
 				for _, url := range healthy {
 					if _, seen := lb.probeHistory[url]; !seen {
@@ -176,12 +188,9 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 					lb.probeHistory = make(map[string]struct{})
 					available = healthy
 				}
-				if len(available) > 0 && randFloat() < R {
-					idx := 0
-					if len(available) > 1 {
-						idx = randInt(len(available))
-					}
-					url := available[idx]
+				if len(available) > 0 && lb.rand.Float64() < R {
+					idx2 := lb.rand.Intn(len(available))
+					url := available[idx2]
 					lb.probeHistory[url] = struct{}{}
 					lb.lastProbeTime[url] = now
 					select {
@@ -191,6 +200,8 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 						log.Printf("[Prequal] Probe queue full, dropping probabilistic probe for backend: %s", url)
 					}
 				}
+				lb.mu.Unlock()
+
 				// Consume probe tasks, then pause briefly
 			consumeLoop:
 				for {
@@ -224,10 +235,8 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 	}()
 }
 
-func randFloat() float64 {
-	return float64(time.Now().UnixNano()%10000) / 10000.0
-}
-
-func randInt(n int) int {
-	return int(time.Now().UnixNano() % int64(n))
+// Stop gracefully shuts down the probe scheduler
+func (lb *PrequalLoadBalancer) Stop() {
+	close(lb.stopProbe)
+	lb.wg.Wait()
 }

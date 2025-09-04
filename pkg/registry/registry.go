@@ -1,6 +1,11 @@
 package registry
 
-import "github.com/Pranshu258/OpenPrequal/pkg/probe"
+import (
+	"sort"
+	"sync"
+
+	"github.com/Pranshu258/OpenPrequal/pkg/probe"
+)
 
 // BackendRegistry defines the interface for backend management
 // (listing, adding, removing, etc.)
@@ -20,6 +25,7 @@ type BackendInfo struct {
 }
 
 type InMemoryBackendRegistry struct {
+	mu       sync.RWMutex
 	Backends map[string]*BackendInfo // key: URL
 }
 
@@ -36,14 +42,24 @@ func NewInMemoryBackendRegistry(urls []string) *InMemoryBackendRegistry {
 }
 
 func (r *InMemoryBackendRegistry) ListBackends() []*BackendInfo {
-	result := make([]*BackendInfo, 0, len(r.Backends))
-	for _, b := range r.Backends {
-		result = append(result, b)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	// deterministic order: sort backend URLs
+	keys := make([]string, 0, len(r.Backends))
+	for url := range r.Backends {
+		keys = append(keys, url)
+	}
+	sort.Strings(keys)
+	result := make([]*BackendInfo, 0, len(keys))
+	for _, url := range keys {
+		result = append(result, r.Backends[url])
 	}
 	return result
 }
 
 func (r *InMemoryBackendRegistry) RegisterBackend(url string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if _, exists := r.Backends[url]; exists {
 		return // already registered
 	}
@@ -55,5 +71,7 @@ func (r *InMemoryBackendRegistry) RegisterBackend(url string) {
 }
 
 func (r *InMemoryBackendRegistry) RemoveBackend(url string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	delete(r.Backends, url)
 }
