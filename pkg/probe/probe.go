@@ -20,8 +20,8 @@ func (p *Probe) AddRIF(rif float64) {
 	p.recentRIFs = append(p.recentRIFs, rif)
 }
 
-// Median returns the median of recent RIFs
-func (p *Probe) Median() float64 {
+// MedianRIF returns the median of recent RIFs
+func (p *Probe) MedianRIF() float64 {
 	n := len(p.recentRIFs)
 	if n == 0 {
 		return 0
@@ -35,22 +35,44 @@ func (p *Probe) Median() float64 {
 
 // Status returns 'hot' if current RIF > median, else 'cold'
 func (p *Probe) Status(currentRIF float64) string {
-	median := p.Median()
+	median := p.MedianRIF()
 	if currentRIF > median {
 		return "hot"
 	}
 	return "cold"
 }
 
+// AddLatency adds a new latency value to history
+func (p *Probe) AddLatency(latency float64) {
+	if len(p.recentLatencies) >= p.maxHistory {
+		p.recentLatencies = p.recentLatencies[1:]
+	}
+	p.recentLatencies = append(p.recentLatencies, latency)
+}
+
+// MedianLatency returns the median of recent latencies
+func (p *Probe) MedianLatency() float64 {
+	n := len(p.recentLatencies)
+	if n == 0 {
+		return 0
+	}
+	sorted := make([]float64, n)
+	copy(sorted, p.recentLatencies)
+	sort.Float64s(sorted)
+	return stat.Quantile(0.5, stat.Empirical, sorted, nil)
+}
+
 type Probe struct {
-	recentRIFs []float64
-	maxHistory int
+	recentRIFs      []float64
+	recentLatencies []float64
+	maxHistory      int
 }
 
 func NewProbe(historySize int) *Probe {
 	return &Probe{
-		recentRIFs: make([]float64, 0, historySize),
-		maxHistory: historySize,
+		recentRIFs:      make([]float64, 0, historySize),
+		recentLatencies: make([]float64, 0, historySize),
+		maxHistory:      historySize,
 	}
 }
 

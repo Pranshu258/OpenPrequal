@@ -87,7 +87,7 @@ func (lb *PrequalLoadBalancer) selectColdBackend(backends []*registry.BackendInf
 			continue
 		}
 		if b.RIFKeyedLatencyMs < coldLatency {
-			coldLatency = b.RIFKeyedLatencyMs
+			coldLatency = b.Probe.MedianLatency()
 			coldIndices = []int{i}
 		} else if b.RIFKeyedLatencyMs == coldLatency {
 			coldIndices = append(coldIndices, i)
@@ -238,8 +238,11 @@ func (lb *PrequalLoadBalancer) probeWorker() {
 				b.RequestsInFlight = result.RequestsInFlight
 				b.AverageLatencyMs = result.AverageLatencyMs
 				b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
+				// record recent request-in-flight and latency history
 				rif := float64(result.RequestsInFlight)
 				b.Probe.AddRIF(rif)
+				b.Probe.AddLatency(result.RIFKeyedLatencyMs)
+				// update hot/cold status based on RIF
 				b.HotCold = b.Probe.Status(rif)
 				metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.HotCold)
 			}
