@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/Pranshu258/OpenPrequal/pkg/contracts"
@@ -27,6 +28,7 @@ func (p *Probe) Median() float64 {
 	}
 	sorted := make([]float64, n)
 	copy(sorted, p.recentRIFs)
+	sort.Float64s(sorted) // Sort the data before calling Quantile
 	// gonum/stat Quantile with p=0.5 for median
 	return stat.Quantile(0.5, stat.Empirical, sorted, nil)
 }

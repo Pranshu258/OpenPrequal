@@ -11,11 +11,12 @@ type BackendRegistry interface {
 }
 
 type BackendInfo struct {
-	URL              string
-	RequestsInFlight int64
-	AverageLatencyMs float64
-	HotCold          string // "hot" or "cold"
-	Probe            *probe.Probe
+	URL               string
+	RequestsInFlight  int64
+	AverageLatencyMs  float64
+	RIFKeyedLatencyMs float64
+	HotCold           string // "hot" or "cold"
+	Probe             *probe.Probe
 }
 
 type InMemoryBackendRegistry struct {

@@ -42,13 +42,14 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		metricsManager.IncInFlight()
+		rifCount := metricsManager.InFlight()
 		defer func() {
+			duration := time.Since(start)
 			metricsManager.DecInFlight()
-			metricsManager.AddLatency(time.Since(start))
+			metricsManager.AddLatencyWithRIF(duration, rifCount)
 		}()
 
 		// Simulate backend load based on current RIF
-		rifCount := metricsManager.InFlight()
 
 		// Base latency with gaussian noise
 		baseLatency := math.Max(0, rand.NormFloat64()*LATENCY_STDDEV_MS+BASE_LATENCY_MS)
@@ -75,12 +76,17 @@ func main() {
 		inFlight := metricsManager.InFlight()
 		avgLatencyMs := float64(avg.Nanoseconds()) / 1e6 // Convert nanoseconds to milliseconds with precision
 
-		log.Printf("[/metrics] Reporting: InFlight=%d AvgLatency=%.3f ms", inFlight, avgLatencyMs)
+		// Get RIF-keyed latency for current RIF count
+		rifKeyedLatency := metricsManager.GetAvgLatencyForRIF(inFlight)
+		rifKeyedLatencyMs := float64(rifKeyedLatency.Nanoseconds()) / 1e6
+
+		log.Printf("[/metrics] Reporting: InFlight=%d AvgLatency=%.3f ms RIFKeyedLatency=%.3f ms", inFlight, avgLatencyMs, rifKeyedLatencyMs)
 
 		w.Header().Set("Content-Type", "application/json")
 		resp := contracts.ProbeResponse{
-			RequestsInFlight: int64(inFlight),
-			AverageLatencyMs: avgLatencyMs,
+			RequestsInFlight:  int64(inFlight),
+			AverageLatencyMs:  avgLatencyMs,
+			RIFKeyedLatencyMs: rifKeyedLatencyMs,
 		}
 		json.NewEncoder(w).Encode(resp)
 	})

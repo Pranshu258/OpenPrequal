@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Pranshu258/OpenPrequal/pkg/metrics"
-
 	"github.com/Pranshu258/OpenPrequal/pkg/probe"
 	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
@@ -55,7 +54,7 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 
 	log.Printf("[Prequal] Backend info snapshot:")
 	for i, b := range backends {
-		log.Printf("  [%d] URL=%s HotCold=%s Latency=%.6f RIF=%d", i, b.URL, b.HotCold, b.AverageLatencyMs, b.RequestsInFlight)
+		log.Printf("  [%d] URL=%s HotCold=%s AvgLatency=%.6f RIFKeyedLatency=%.6f RIF=%d", i, b.URL, b.HotCold, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.RequestsInFlight)
 	}
 
 	// ...existing backend selection logic...
@@ -66,22 +65,27 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 	for i, b := range backends {
 		if b.HotCold == "cold" {
 			allHot = false
-			if b.AverageLatencyMs < coldLatency {
-				coldLatency = b.AverageLatencyMs
+			// Use RIF-keyed latency instead of average latency
+			rifKeyedLatency := b.RIFKeyedLatencyMs
+			if rifKeyedLatency < coldLatency {
+				coldLatency = rifKeyedLatency
 				coldIndices = []int{i}
-			} else if b.AverageLatencyMs == coldLatency {
+			} else if rifKeyedLatency == coldLatency {
 				coldIndices = append(coldIndices, i)
 			}
 		}
 	}
 
 	if !allHot && len(coldIndices) > 0 {
-		idx := coldIndices[0]
+		// select among cold backends
+		sel := coldIndices[0]
 		if len(coldIndices) > 1 {
-			idx = randInt(len(coldIndices))
+			// pick random index in coldIndices
+			rnd := randInt(len(coldIndices))
+			sel = coldIndices[rnd]
 		}
-		log.Printf("[Prequal] Selected cold backend: %s (latency=%.6f)", backends[idx].URL, backends[idx].AverageLatencyMs)
-		return backends[idx].URL
+		log.Printf("[Prequal] Selected cold backend: %s (RIF-keyed latency=%.6f)", backends[sel].URL, backends[sel].RIFKeyedLatencyMs)
+		return backends[sel].URL
 	}
 
 	// If all are hot, pick backend with lowest RequestsInFlight
@@ -97,12 +101,14 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 		}
 	}
 	if len(minRIFIndices) > 0 {
-		idx := minRIFIndices[0]
+		// select among hot backends with minimal RIF
+		sel := minRIFIndices[0]
 		if len(minRIFIndices) > 1 {
-			idx = randInt(len(minRIFIndices))
+			rnd := randInt(len(minRIFIndices))
+			sel = minRIFIndices[rnd]
 		}
-		log.Printf("[Prequal] Selected hot backend: %s (RIF=%d)", backends[idx].URL, backends[idx].RequestsInFlight)
-		return backends[idx].URL
+		log.Printf("[Prequal] Selected hot backend: %s (RIF=%d)", backends[sel].URL, backends[sel].RequestsInFlight)
+		return backends[sel].URL
 	}
 	idx := 0
 	if n > 1 {
@@ -185,7 +191,8 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 						log.Printf("[Prequal] Probe queue full, dropping probabilistic probe for backend: %s", url)
 					}
 				}
-				// Consume probe tasks
+				// Consume probe tasks, then pause briefly
+			consumeLoop:
 				for {
 					select {
 					case url := <-lb.probeQueue:
@@ -195,11 +202,12 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 								if b, exists := memReg.Backends[url]; exists {
 									b.RequestsInFlight = result.RequestsInFlight
 									b.AverageLatencyMs = result.AverageLatencyMs
+									b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
 									rif := float64(result.RequestsInFlight)
 									b.Probe.AddRIF(rif)
 									b.HotCold = b.Probe.Status(rif)
-									log.Printf("[Prequal] Probe updated backend: %s Latency=%.6f RIF=%d HotCold=%s", url, b.AverageLatencyMs, b.RequestsInFlight, b.HotCold)
-									metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.HotCold)
+									log.Printf("[Prequal] Probe updated backend: %s AvgLatency=%.6f RIFKeyedLatency=%.6f RIF=%d HotCold=%s", url, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.RequestsInFlight, b.HotCold)
+									metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.HotCold)
 								}
 							}
 						} else {
@@ -208,7 +216,7 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 					default:
 						// Exit inner loop and continue scheduling
 						time.Sleep(20 * time.Millisecond)
-						return
+						break consumeLoop
 					}
 				}
 			}

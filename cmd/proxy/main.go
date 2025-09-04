@@ -11,6 +11,7 @@ import (
 
 	"github.com/Pranshu258/OpenPrequal/pkg/contracts"
 	"github.com/Pranshu258/OpenPrequal/pkg/loadbalancer"
+	"github.com/Pranshu258/OpenPrequal/pkg/metrics"
 	"github.com/Pranshu258/OpenPrequal/pkg/probe"
 	"github.com/Pranshu258/OpenPrequal/pkg/registry"
 )
@@ -144,10 +145,14 @@ func main() {
 					if b, exists := memReg.Backends[backend.URL]; exists {
 						b.RequestsInFlight = result.RequestsInFlight
 						b.AverageLatencyMs = result.AverageLatencyMs
+						b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
 						// Calculate RIF (Requests In Flight) and update probe/hotcold
 						rif := float64(result.RequestsInFlight)
 						b.Probe.AddRIF(rif)
 						b.HotCold = b.Probe.Status(rif)
+
+						// Log the probe update with RIF-keyed latency
+						metrics.LogProbeUpdate(backend.URL, result.RequestsInFlight, result.AverageLatencyMs, result.RIFKeyedLatencyMs, b.HotCold)
 					}
 				}
 			}
