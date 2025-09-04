@@ -17,31 +17,34 @@ const (
 	requestWindowSec       = int64(1)              // sliding window in seconds for RPS
 	forcedProbeIntervalSec = int64(20)             // min seconds between forced probes per backend
 	probeSleepDuration     = 20 * time.Millisecond // sleep between probe consumption loops
+	maxRequestBuffer       = 100000                // capacity for ring buffer of request timestamps
 )
 
 // PrequalLoadBalancer selects the cold backend with lowest latency, or if all are hot, the one with lowest RIF
 // Implements LoadBalancer interface
 type PrequalLoadBalancer struct {
-	Registry          registry.BackendRegistry
-	probeQueue        chan string
-	stopProbe         chan struct{}
-	probeHistory      map[string]struct{}
-	lastProbeTime     map[string]int64
-	requestTimestamps []int64
-	mu                sync.Mutex
-	wg                sync.WaitGroup
-	rand              *rand.Rand
+	Registry                   registry.BackendRegistry
+	probeQueue                 chan string
+	stopProbe                  chan struct{}
+	probeHistory               map[string]struct{}
+	lastProbeTime              map[string]int64
+	requestBuffer              []int64 // ring buffer for timestamps
+	rpsHead, rpsTail, rpsCount int
+	rpsMu                      sync.Mutex // separate lock for request rate buffer
+	mu                         sync.Mutex
+	wg                         sync.WaitGroup
+	rand                       *rand.Rand
 }
 
 func NewPrequalLoadBalancer(reg registry.BackendRegistry) *PrequalLoadBalancer {
 	lb := &PrequalLoadBalancer{
-		Registry:          reg,
-		probeQueue:        make(chan string, 100),
-		stopProbe:         make(chan struct{}),
-		probeHistory:      make(map[string]struct{}),
-		lastProbeTime:     make(map[string]int64),
-		requestTimestamps: make([]int64, 0, 1000),
-		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
+		Registry:      reg,
+		probeQueue:    make(chan string, 100),
+		stopProbe:     make(chan struct{}),
+		probeHistory:  make(map[string]struct{}),
+		lastProbeTime: make(map[string]int64),
+		requestBuffer: make([]int64, maxRequestBuffer),
+		rand:          rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	lb.startProbeScheduler()
 	return lb
@@ -50,12 +53,26 @@ func NewPrequalLoadBalancer(reg registry.BackendRegistry) *PrequalLoadBalancer {
 // recordRequest logs the current timestamp and removes entries outside the request window
 func (lb *PrequalLoadBalancer) recordRequest() {
 	now := time.Now().UnixNano() / 1e9
-	lb.mu.Lock()
-	defer lb.mu.Unlock()
-	lb.requestTimestamps = append(lb.requestTimestamps, now)
 	cutoff := now - requestWindowSec
-	for len(lb.requestTimestamps) > 0 && lb.requestTimestamps[0] < cutoff {
-		lb.requestTimestamps = lb.requestTimestamps[1:]
+	lb.rpsMu.Lock()
+	defer lb.rpsMu.Unlock()
+	// enqueue at tail
+	lb.requestBuffer[lb.rpsTail] = now
+	lb.rpsTail = (lb.rpsTail + 1) % len(lb.requestBuffer)
+	if lb.rpsCount < len(lb.requestBuffer) {
+		lb.rpsCount++
+	} else {
+		// overwrite oldest if full
+		lb.rpsHead = (lb.rpsHead + 1) % len(lb.requestBuffer)
+	}
+	// drop expired entries
+	for lb.rpsCount > 0 {
+		oldest := lb.requestBuffer[lb.rpsHead]
+		if oldest >= cutoff {
+			break
+		}
+		lb.rpsHead = (lb.rpsHead + 1) % len(lb.requestBuffer)
+		lb.rpsCount--
 	}
 }
 
@@ -121,12 +138,6 @@ func (lb *PrequalLoadBalancer) PickBackend() string {
 		return ""
 	}
 
-	// Debug snapshot of current backend metrics
-	log.Println("[Prequal] Backend info snapshot:")
-	for i, b := range backends {
-		log.Printf("  [%d] URL=%s HotCold=%s AvgLatency=%.6f RIFKeyedLatency=%.6f RIF=%d", i, b.URL, b.HotCold, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.RequestsInFlight)
-	}
-
 	// Try selecting a cold backend first
 	if url, ok := lb.selectColdBackend(backends); ok {
 		return url
@@ -172,16 +183,10 @@ func (lb *PrequalLoadBalancer) scheduleForcedProbes(urls []string, now int64) {
 
 // scheduleProbabilisticProbe enqueues a probe based on RPS and without replacement
 func (lb *PrequalLoadBalancer) scheduleProbabilisticProbe(urls []string, now int64) {
-	// calculate request rate
-	lb.mu.Lock()
-	count := 0
-	cutoff := now - requestWindowSec
-	for _, ts := range lb.requestTimestamps {
-		if ts >= cutoff {
-			count++
-		}
-	}
-	lb.mu.Unlock()
+	// calculate request rate using ring buffer
+	lb.rpsMu.Lock()
+	count := lb.rpsCount
+	lb.rpsMu.Unlock()
 	rps := float64(count)
 	if rps < 1e-6 {
 		rps = 1e-6
@@ -190,7 +195,7 @@ func (lb *PrequalLoadBalancer) scheduleProbabilisticProbe(urls []string, now int
 	if R > 1.0 {
 		R = 1.0
 	}
-	// select without replacement
+	// select without replacement under main lock
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
 	available := make([]string, 0, len(urls))
