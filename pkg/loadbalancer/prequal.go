@@ -1,6 +1,8 @@
 package loadbalancer
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -25,7 +27,6 @@ const (
 // Implements LoadBalancer interface
 type PrequalLoadBalancer struct {
 	Registry                   registry.BackendRegistry
-	probeQueue                 chan string
 	stopProbe                  chan struct{}
 	probeHistory               map[string]struct{}
 	lastProbeTime              map[string]int64
@@ -34,21 +35,28 @@ type PrequalLoadBalancer struct {
 	rpsMu                      sync.Mutex // separate lock for request rate buffer
 	mu                         sync.Mutex
 	wg                         sync.WaitGroup
-	workersWg                  sync.WaitGroup // wait for probe workers
-	rand                       *rand.Rand
+	// probe subsystem
+	probeTaskQueue *ProbeTaskQueue
+	probePool      *ProbePool
+	probeManager   *ProbeManager
+	rand           *rand.Rand
 }
 
 func NewPrequalLoadBalancer(reg registry.BackendRegistry) *PrequalLoadBalancer {
 	lb := &PrequalLoadBalancer{
 		Registry:      reg,
-		probeQueue:    make(chan string, 100),
 		stopProbe:     make(chan struct{}),
 		probeHistory:  make(map[string]struct{}),
 		lastProbeTime: make(map[string]int64),
 		requestBuffer: make([]int64, maxRequestBuffer),
 		rand:          rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+	// initialize probe subsystem
+	lb.probeTaskQueue = NewProbeTaskQueue(100)
+	lb.probePool = NewProbePool(1000, 100)
+	lb.probeManager = NewProbeManager(reg, lb.probeTaskQueue, lb.probePool, 20)
 	lb.startProbeScheduler()
+	lb.probeManager.Start()
 	return lb
 }
 
@@ -174,11 +182,11 @@ func (lb *PrequalLoadBalancer) scheduleForcedProbes(urls []string, now int64) {
 	for _, url := range urls {
 		if now-lb.lastProbeTime[url] >= forcedProbeIntervalSec {
 			lb.lastProbeTime[url] = now
-			select {
-			case lb.probeQueue <- url:
-				log.Printf("[Prequal] Forced probe scheduled for backend: %s", url)
-			default:
+			// enqueue into deduplicated probe task queue
+			if err := lb.probeTaskQueue.AddTask(url); err != nil {
 				log.Printf("[Prequal] Probe queue full, dropping forced probe for backend: %s", url)
+			} else {
+				log.Printf("[Prequal] Forced probe scheduled for backend: %s", url)
 			}
 		}
 	}
@@ -216,48 +224,234 @@ func (lb *PrequalLoadBalancer) scheduleProbabilisticProbe(urls []string, now int
 		url := available[idx]
 		lb.probeHistory[url] = struct{}{}
 		lb.lastProbeTime[url] = now
-		select {
-		case lb.probeQueue <- url:
-			log.Printf("[Prequal] Probabilistic probe scheduled for backend: %s (R=%.3f, RPS=%.6f)", url, R, rps)
-		default:
+		if err := lb.probeTaskQueue.AddTask(url); err != nil {
 			log.Printf("[Prequal] Probe queue full, dropping probabilistic probe for backend: %s", url)
+		} else {
+			log.Printf("[Prequal] Probabilistic probe scheduled for backend: %s (R=%.3f, RPS=%.6f)", url, R, rps)
 		}
 	}
 }
 
-// probeWorker processes probeQueue entries concurrently
-func (lb *PrequalLoadBalancer) probeWorker() {
-	defer lb.workersWg.Done()
-	for url := range lb.probeQueue {
-		result, err := probe.ProbeBackend(url)
-		if err != nil {
-			log.Printf("[Prequal] Probe failed for backend: %s, err: %v", url, err)
-			continue
-		}
-		if memReg, ok := lb.Registry.(*registry.InMemoryBackendRegistry); ok {
-			if b, exists := memReg.Backends[url]; exists {
-				b.RequestsInFlight = result.RequestsInFlight
-				b.AverageLatencyMs = result.AverageLatencyMs
-				b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
-				// record recent request-in-flight and latency history
-				rif := float64(result.RequestsInFlight)
-				b.Probe.AddRIF(rif)
-				b.Probe.AddLatency(result.RIFKeyedLatencyMs)
-				// update hot/cold status based on RIF
-				b.HotCold = b.Probe.Status(rif)
-				metrics.LogProbeUpdate(url, b.RequestsInFlight, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.HotCold)
+// --- ProbeTaskQueue: deduplicated queue of probe tasks ---
+type ProbeTaskQueue struct {
+	mu  sync.Mutex
+	set map[string]struct{}
+	ch  chan string
+	cap int
+}
+
+func NewProbeTaskQueue(capacity int) *ProbeTaskQueue {
+	return &ProbeTaskQueue{
+		set: make(map[string]struct{}),
+		ch:  make(chan string, capacity),
+		cap: capacity,
+	}
+}
+
+// AddTask adds a backend URL to the queue if not already present. Returns error if queue is full.
+func (q *ProbeTaskQueue) AddTask(url string) error {
+	q.mu.Lock()
+	if _, exists := q.set[url]; exists {
+		q.mu.Unlock()
+		return nil
+	}
+	// optimistically mark as present
+	q.set[url] = struct{}{}
+	q.mu.Unlock()
+
+	select {
+	case q.ch <- url:
+		return nil
+	default:
+		// remove mark if we couldn't enqueue
+		q.mu.Lock()
+		delete(q.set, url)
+		q.mu.Unlock()
+		return fmt.Errorf("queue full")
+	}
+}
+
+// GetTask blocks until a task is available and returns the URL
+func (q *ProbeTaskQueue) GetTask() string {
+	url := <-q.ch
+	q.mu.Lock()
+	delete(q.set, url)
+	q.mu.Unlock()
+	return url
+}
+
+// Size returns number of unique tasks queued
+func (q *ProbeTaskQueue) Size() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return len(q.set)
+}
+
+// --- ProbePool: stores recent latencies and RIF history per backend ---
+type probeEntry struct {
+	latencies []float64
+	rifs      []float64
+	maxHist   int
+	mu        sync.Mutex
+	last      time.Time
+	curLat    float64
+}
+
+type ProbePool struct {
+	mu       sync.Mutex
+	entries  map[string]*probeEntry
+	maxBacks int
+}
+
+func NewProbePool(maxBackends int, perBackendHistory int) *ProbePool {
+	return &ProbePool{entries: make(map[string]*probeEntry), maxBacks: perBackendHistory}
+}
+
+func (p *ProbePool) ensureEntry(url string) *probeEntry {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	e, ok := p.entries[url]
+	if !ok {
+		if len(p.entries) >= p.maxBacks {
+			// remove one arbitrary entry (oldest by map iteration is acceptable)
+			for k := range p.entries {
+				delete(p.entries, k)
+				break
 			}
+		}
+		e = &probeEntry{latencies: make([]float64, 0, 100), rifs: make([]float64, 0, 100), maxHist: 100}
+		p.entries[url] = e
+	}
+	return e
+}
+
+func (p *ProbePool) AddProbe(url string, latency float64, rif float64) {
+	e := p.ensureEntry(url)
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if len(e.latencies) >= e.maxHist {
+		e.latencies = e.latencies[1:]
+	}
+	e.latencies = append(e.latencies, latency)
+	if len(e.rifs) >= e.maxHist {
+		e.rifs = e.rifs[1:]
+	}
+	e.rifs = append(e.rifs, rif)
+	e.last = time.Now()
+	// update current latency
+	sum := 0.0
+	for _, v := range e.latencies {
+		sum += v
+	}
+	if len(e.latencies) > 0 {
+		e.curLat = sum / float64(len(e.latencies))
+	}
+}
+
+func (p *ProbePool) GetCurrentLatency(url string) (float64, bool) {
+	p.mu.Lock()
+	e, ok := p.entries[url]
+	p.mu.Unlock()
+	if !ok {
+		return 0, false
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.curLat, true
+}
+
+func (p *ProbePool) GetRIFs(url string) []float64 {
+	p.mu.Lock()
+	e, ok := p.entries[url]
+	p.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make([]float64, len(e.rifs))
+	copy(out, e.rifs)
+	return out
+}
+
+// --- ProbeManager: consumes ProbeTaskQueue and runs probes with bounded concurrency ---
+type ProbeManager struct {
+	reg    registry.BackendRegistry
+	queue  *ProbeTaskQueue
+	pool   *ProbePool
+	sem    chan struct{}
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+}
+
+func NewProbeManager(reg registry.BackendRegistry, q *ProbeTaskQueue, p *ProbePool, maxConcurrent int) *ProbeManager {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &ProbeManager{reg: reg, queue: q, pool: p, sem: make(chan struct{}, maxConcurrent), ctx: ctx, cancel: cancel}
+}
+
+func (m *ProbeManager) Start() {
+	m.wg.Add(1)
+	go m.run()
+}
+
+func (m *ProbeManager) Stop() {
+	m.cancel()
+	m.wg.Wait()
+}
+
+func (m *ProbeManager) run() {
+	defer m.wg.Done()
+	for {
+		select {
+		case <-m.ctx.Done():
+			return
+		default:
+			// blockingly get a task; but use select to allow cancel
+			var url string
+			select {
+			case <-m.ctx.Done():
+				return
+			case url = <-m.queue.ch:
+				// remove mark
+				m.queue.mu.Lock()
+				delete(m.queue.set, url)
+				m.queue.mu.Unlock()
+			}
+
+			// acquire semaphore
+			m.sem <- struct{}{}
+			m.wg.Add(1)
+			go func(u string) {
+				defer func() { <-m.sem; m.wg.Done() }()
+				result, err := probe.ProbeBackend(u)
+				if err != nil {
+					log.Printf("[ProbeManager] Probe failed for %s: %v", u, err)
+					return
+				}
+				// update probe pool
+				m.pool.AddProbe(u, result.RIFKeyedLatencyMs, float64(result.RequestsInFlight))
+				// update registry if in-memory using concurrency-safe helper
+				if memReg, ok := m.reg.(*registry.InMemoryBackendRegistry); ok {
+					memReg.UpdateBackend(u, func(b *registry.BackendInfo) {
+						b.RequestsInFlight = result.RequestsInFlight
+						b.AverageLatencyMs = result.AverageLatencyMs
+						b.RIFKeyedLatencyMs = result.RIFKeyedLatencyMs
+						// record recent request-in-flight and latency history
+						rif := float64(result.RequestsInFlight)
+						b.Probe.AddRIF(rif)
+						b.Probe.AddLatency(result.RIFKeyedLatencyMs)
+						b.HotCold = b.Probe.Status(rif)
+						metrics.LogProbeUpdate(u, b.RequestsInFlight, b.AverageLatencyMs, b.RIFKeyedLatencyMs, b.HotCold)
+					})
+				}
+			}(url)
 		}
 	}
 }
 
 // startProbeScheduler launches scheduler and probe workers
 func (lb *PrequalLoadBalancer) startProbeScheduler() {
-	// spawn probe worker pool
-	for i := 0; i < probeWorkerCount; i++ {
-		lb.workersWg.Add(1)
-		go lb.probeWorker()
-	}
 	// scheduling loop
 	lb.wg.Add(1)
 	go func() {
@@ -267,8 +461,7 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 		for {
 			select {
 			case <-lb.stopProbe:
-				// stop scheduling and close queue to signal workers
-				close(lb.probeQueue)
+				// stop scheduling; probeManager is stopped separately
 				return
 			case <-ticker.C:
 				backends := lb.Registry.ListBackends()
@@ -285,5 +478,7 @@ func (lb *PrequalLoadBalancer) startProbeScheduler() {
 func (lb *PrequalLoadBalancer) Stop() {
 	close(lb.stopProbe)
 	lb.wg.Wait()
-	lb.workersWg.Wait()
+	if lb.probeManager != nil {
+		lb.probeManager.Stop()
+	}
 }

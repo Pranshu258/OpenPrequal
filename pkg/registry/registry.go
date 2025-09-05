@@ -75,3 +75,13 @@ func (r *InMemoryBackendRegistry) RemoveBackend(url string) {
 	defer r.mu.Unlock()
 	delete(r.Backends, url)
 }
+
+// UpdateBackend performs a concurrency-safe update on a backend entry if it exists.
+// The provided update function is called while holding the registry lock.
+func (r *InMemoryBackendRegistry) UpdateBackend(url string, update func(*BackendInfo)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if b, ok := r.Backends[url]; ok {
+		update(b)
+	}
+}
