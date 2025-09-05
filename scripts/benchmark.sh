@@ -7,7 +7,7 @@ set -e
 NUM_BACKENDS=${1:-3}
 DURATION=${2:-30s}
 RATE=${3:-50}
-ALGOS=(roundrobin prequal)
+ALGOS=(prequal)
 
 mkdir -p logs
 mkdir -p builds

@@ -37,7 +37,7 @@ func main() {
 	)
 
 	// Random jitter multiplier for this backend instance (1.0 - 3.0)
-	jitterMultiplier := 1.0 + rand.Float64()*2.0
+	jitterMultiplier := 1.0 + 0*rand.Float64()*2.0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -55,7 +55,7 @@ func main() {
 		baseLatency := math.Max(0, rand.NormFloat64()*LATENCY_STDDEV_MS+BASE_LATENCY_MS)
 
 		// Additional jitter based on RIF count
-		rifJitter := rand.Float64() * float64(rifCount) * LATENCY_PER_RIF
+		rifJitter := 0 * rand.Float64() * float64(rifCount) * LATENCY_PER_RIF
 
 		// Total simulated latency
 		totalLatencyMs := jitterMultiplier * (baseLatency + rifJitter)
