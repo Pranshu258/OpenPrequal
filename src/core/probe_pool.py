@@ -1,6 +1,7 @@
 import asyncio
 import time
 from collections import deque
+from statistics import median
 
 from core.profiler import Profiler
 
@@ -32,28 +33,25 @@ class ProbePool:
             entry = self.probes[backend_id]
             entry["latencies"].append(latency)
             entry["rif_values"].append(rif_value)
+            entry["temperature"] = "hot" if rif_value > median(entry["rif_values"]) else "cold"
             entry["timestamp"] = now
             entry["current_latency"] = sum(entry["latencies"]) / len(entry["latencies"])
 
     @Profiler.profile
-    async def get_current_latency(self, backend_id):
-        # Use a faster check that doesn't require lock for read operations
-        if backend_id not in self.probes:
-            return None
-
+    async def get_current_rifs(self, backend_ids):
+        """Return a list of current RIFs for the given backend_ids, in order."""
+        # Use a single lock for all reads
         async with self._lock:
-            if backend_id in self.probes:
-                return self.probes[backend_id]["current_latency"]
-            return None
+            return [self.probes.get(bid, {}).get("current_rif", None) for bid in backend_ids]
 
     @Profiler.profile
-    async def get_rif_values(self, backend_id):
-        # Use a faster check that doesn't require lock for read operations
-        if backend_id not in self.probes:
-            return []
-
+    async def get_current_latencies(self, backend_ids):
+        """Return a list of current latencies for the given backend_ids, in order."""
         async with self._lock:
-            if backend_id in self.probes:
-                # Return a list copy to avoid external modifications
-                return list(self.probes[backend_id]["rif_values"])
-            return []
+            return [self.probes.get(bid, {}).get("current_latency", None) for bid in backend_ids]
+
+    @Profiler.profile
+    async def get_current_temperatures(self, backend_ids):
+        """Return a list of current temperatures for the given backend_ids, in order."""
+        async with self._lock:
+            return [self.probes.get(bid, {}).get("temperature", None) for bid in backend_ids]
