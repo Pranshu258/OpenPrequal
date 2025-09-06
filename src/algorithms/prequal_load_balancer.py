@@ -96,7 +96,7 @@ class PrequalLoadBalancer(LoadBalancer):
             self._request_timestamps.popleft()
 
         rps = max(len(self._request_timestamps) / window, 1e-6)  # Avoid div by zero
-        R = min(5.0 / rps, 1.0)  # Cap at 1.0
+        R = min(50.0 / rps, 1.0)  # Cap at 1.0
 
         # Pre-compute backend IDs set once
         backend_ids = {b.url for b in healthy_backends}
