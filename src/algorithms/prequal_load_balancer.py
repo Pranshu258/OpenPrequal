@@ -3,6 +3,7 @@ import logging
 import random
 import time
 from typing import Optional
+from collections import deque
 
 from abstractions.load_balancer import LoadBalancer
 from abstractions.registry import Registry
@@ -34,7 +35,7 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_pool = probe_pool
         self._probe_task_queue = probe_task_queue
         self._probe_history = set()
-        self._request_timestamps = []  # For RPS tracking
+        self._request_timestamps = deque()  # For RPS tracking
         self._last_probe_time = {}  # backend_id -> last probe timestamp
         # cache for median RIF values per backend
         self._rif_median_cache = {}
@@ -99,7 +100,7 @@ class PrequalLoadBalancer(LoadBalancer):
         # Optimize timestamp filtering - remove from start instead of recreating list
         cutoff = now - window
         while self._request_timestamps and self._request_timestamps[0] < cutoff:
-            self._request_timestamps.pop(0)
+            self._request_timestamps.popleft()
 
         rps = max(len(self._request_timestamps) / window, 1e-6)  # Avoid div by zero
         R = min(5.0 / rps, 1.0)  # Cap at 1.0
@@ -129,7 +130,7 @@ class PrequalLoadBalancer(LoadBalancer):
                     f"Forced scheduled probe for backend {backend_id} (interval > 20s)"
                 )
 
-        # --- Probabilistic probe scheduling (existing logic) ---
+        # --- Probabilistic probe scheduling ---
         available = backend_ids - self._probe_history
         if not available:
             self._probe_history.clear()
@@ -161,7 +162,7 @@ class PrequalLoadBalancer(LoadBalancer):
             backends = [b for b in await self._registry.list_backends() if b.health]
             await self._schedule_probe_tasks(backends)
             # wait before next scheduling cycle
-            await asyncio.sleep(0.02)
+            await asyncio.sleep(0.01)
 
     @Profiler.profile
     async def get_next_backend(self) -> Optional[str]:
