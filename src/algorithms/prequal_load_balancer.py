@@ -37,13 +37,6 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_history = set()
         self._request_timestamps = deque()  # For RPS tracking
         self._last_probe_time = {}  # backend_id -> last probe timestamp
-        # cache for median RIF values per backend
-        self._rif_median_cache = {}
-        # track last RIF info (count, last_value) for cache invalidation
-        self._rif_last_info = {}
-        # cache for current latencies to avoid repeated async calls
-        self._latency_cache = {}
-        self._latency_cache_time = {}
         # cache for healthy backends to avoid repeated filtering
         self._healthy_backends_cache = None
         self._healthy_backends_cache_time = 0
