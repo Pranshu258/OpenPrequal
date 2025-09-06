@@ -91,11 +91,10 @@ class PrequalLoadBalancer(LoadBalancer):
         """
         Enqueue a probe task for a random healthy backend (without replacement) with probability R=5/RPS per request.
         Also ensures that every backend is probed at least once every 30 seconds.
-        Tracks RPS using a sliding window of timestamps.
+        Tracks RPS using a sliding window of timestamps. Sliding window is intentional because buffer counter would mess with probe probability on time boundaries.
         """
         now = time.time()
         window = 1.0  # seconds
-        self._request_timestamps.append(now)
 
         # Optimize timestamp filtering - remove from start instead of recreating list
         cutoff = now - window
@@ -172,6 +171,8 @@ class PrequalLoadBalancer(LoadBalancer):
         """
         # Cache healthy backends for a short time to avoid repeated registry calls
         now = time.time()
+        self._request_timestamps.append(now)
+        
         if (
             self._healthy_backends_cache is None
             or now - self._healthy_backends_cache_time > self._cache_timeout
