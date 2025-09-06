@@ -2,7 +2,6 @@ import asyncio
 import logging
 import random
 import time
-from statistics import median
 from typing import Optional
 
 from abstractions.load_balancer import LoadBalancer
@@ -55,97 +54,20 @@ class PrequalLoadBalancer(LoadBalancer):
 
     @Profiler.profile
     async def _classify_backends(self, backends):
-        """Classify backends as hot or cold, returning RIF history map to reuse."""
-        # Use pre-allocated lists to avoid repeated allocations
+        """Classify backends as hot or cold using probe pool's temperature property"""
         backend_urls = [b.url for b in backends]
-
-        # Fetch all RIFs concurrently and build map more efficiently
-        rifs_list = await asyncio.gather(
-            *[self._probe_pool.get_rif_values(url) for url in backend_urls]
-        )
-        rifs_map = dict(zip(backend_urls, rifs_list))
-
-        # Pre-allocate lists with capacity hints
-        cold = []
-        hot = []
-
-        # Process backends in batch to reduce loop overhead
-        for backend in backends:
-            url = backend.url
-            rifs = rifs_map[url]
-
-            if not rifs:
-                cold.append(backend)
-                continue
-
-            count = len(rifs)
-            last = rifs[-1]
-
-            # Optimize cache lookup with tuple key
-            cache_key = (count, last)
-            last_info = self._rif_last_info.get(url)
-
-            if last_info == cache_key and url in self._rif_median_cache:
-                med = self._rif_median_cache[url]
-            else:
-                med = median(rifs)
-                self._rif_median_cache[url] = med
-                self._rif_last_info[url] = cache_key
-
-            # Direct comparison without intermediate variable
-            if last < med:
-                cold.append(backend)
-            else:
-                hot.append(backend)
-
-        return cold, hot, rifs_map
+        temps = await self._probe_pool.get_current_temperatures(backend_urls)
+        cold = [b for b, t in zip(backends, temps) if t == "cold"]
+        hot = [b for b, t in zip(backends, temps) if t == "hot"]
+        return cold, hot
 
     @Profiler.profile
     async def _select_backend(self, cold, hot, rifs_map=None):
         """Select backend from cold (lowest latency) or hot (lowest current rif), reusing RIF map if provided."""
         if cold:
-            # Check cache first for latencies
-            now = time.time()
-            cached_latencies = []
-            uncached_backends = []
-
-            for backend in cold:
-                cache_time = self._latency_cache_time.get(backend.url, 0)
-                if (
-                    now - cache_time < self._cache_timeout
-                    and backend.url in self._latency_cache
-                ):
-                    cached_latencies.append(self._latency_cache[backend.url])
-                else:
-                    cached_latencies.append(None)
-                    uncached_backends.append(backend)
-
-            # Fetch only uncached latencies
-            if uncached_backends:
-                fresh_latencies = await asyncio.gather(
-                    *[
-                        self._probe_pool.get_current_latency(b.url)
-                        for b in uncached_backends
-                    ]
-                )
-
-                # Update cache
-                for backend, latency in zip(uncached_backends, fresh_latencies):
-                    if latency is not None:
-                        self._latency_cache[backend.url] = latency
-                        self._latency_cache_time[backend.url] = now
-
-                # Merge cached and fresh latencies
-                uncached_idx = 0
-                for i, cached_lat in enumerate(cached_latencies):
-                    if cached_lat is None:
-                        cached_latencies[i] = fresh_latencies[uncached_idx] or float(
-                            "inf"
-                        )
-                        uncached_idx += 1
-
-            # Convert None to inf for comparison
-            latencies = [l if l is not None else float("inf") for l in cached_latencies]
+            cold_urls = [b.url for b in cold]
+            latencies = await self._probe_pool.get_current_latencies(cold_urls)
+            latencies = [l if l is not None else float("inf") for l in latencies]
             best = min(latencies)
 
             # Find all backends with best latency - use index to avoid zip overhead
