@@ -62,32 +62,22 @@ class PrequalLoadBalancer(LoadBalancer):
         return cold, hot
 
     @Profiler.profile
-    async def _select_backend(self, cold, hot, rifs_map=None):
+    async def _select_backend(self, cold, hot):
         """Select backend from cold (lowest latency) or hot (lowest current rif), reusing RIF map if provided."""
         if cold:
             cold_urls = [b.url for b in cold]
             latencies = await self._probe_pool.get_current_latencies(cold_urls)
             latencies = [l if l is not None else float("inf") for l in latencies]
             best = min(latencies)
-
-            # Find all backends with best latency - use index to avoid zip overhead
             candidates = [cold[i] for i, l in enumerate(latencies) if l == best]
             selected = (
                 candidates[0] if len(candidates) == 1 else random.choice(candidates)
             )
             logger.info(f"Selected cold backend (lowest latency): {selected.url}")
         else:
-            # Use cached RIF values when available
-            if rifs_map is not None:
-                cur_rifs = [
-                    (rifs_map.get(b.url, [None])[-1] or float("inf")) for b in hot
-                ]
-            else:
-                rifs_list = await asyncio.gather(
-                    *[self._probe_pool.get_rif_values(b.url) for b in hot]
-                )
-                cur_rifs = [vals[-1] if vals else float("inf") for vals in rifs_list]
-
+            hot_urls = [b.url for b in hot]
+            rifs_list = await self._probe_pool.get_current_rifs(hot_urls)
+            cur_rifs = [r if r is not None else float("inf") for r in rifs_list]
             best = min(cur_rifs)
             candidates = [hot[i] for i, r in enumerate(cur_rifs) if r == best]
             selected = (
