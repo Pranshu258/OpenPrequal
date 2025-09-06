@@ -114,37 +114,33 @@ class PrequalLoadBalancer(LoadBalancer):
             if now - self._last_probe_time.get(backend_id, 0) >= min_probe_interval
         ]
 
-        # Batch update timestamps and schedule tasks
-        if forced_backends:
-            for backend_id in forced_backends:
-                self._last_probe_time[backend_id] = now
-                asyncio.create_task(self._probe_task_queue.add_task(backend_id))
-                logger.info(
-                    f"Forced scheduled probe for backend {backend_id} (interval > 20s)"
-                )
-
         # --- Probabilistic probe scheduling ---
         available = backend_ids - self._probe_history
         if not available:
             self._probe_history.clear()
             available = backend_ids
 
+        scheduled_backends = set(forced_backends)
         if random.random() < R and available:
-            # Convert to list only when needed and use faster selection
             available_list = list(available)
             backend_id = (
                 available_list[0]
                 if len(available_list) == 1
                 else random.choice(available_list)
             )
-            self._probe_history.add(backend_id)
-            self._last_probe_time[backend_id] = now
-            asyncio.create_task(self._probe_task_queue.add_task(backend_id))
-            logger.info(
-                f"Scheduled probe for backend {backend_id} (R={R:.3f}, RPS={rps:.2f})"
-            )
-        else:
+            scheduled_backends.add(backend_id)
+
+        # Update probe history and last probe time, and batch all probe tasks
+        if not scheduled_backends:
             logger.debug(f"No probe scheduled (R={R:.3f}, RPS={rps:.2f})")
+        else:
+            for backend_id in scheduled_backends:
+                asyncio.create_task(self._probe_task_queue.add_task(backend_id))
+                self._probe_history.add(backend_id)
+                self._last_probe_time[backend_id] = now
+                logger.info(
+                    f"Scheduled probe for backend {backend_id} (R={R:.3f}, RPS={rps:.2f})"
+                )
 
     @Profiler.profile
     async def _probe_scheduler_loop(self):
