@@ -41,7 +41,7 @@ class PrequalLoadBalancer(LoadBalancer):
         self._healthy_backends_cache = None
         self._healthy_backends_cache_time = 0
         # cache timeout in seconds
-        self._cache_timeout = 0.005  # 1ms cache timeout for hot path
+        self._cache_timeout = 0.005  # 5ms cache timeout for hot path
         logger.info("PrequalLoadBalancer initialized.")
         # start background probe scheduler loop
         self._scheduler_task = asyncio.create_task(self._probe_scheduler_loop())
@@ -152,8 +152,17 @@ class PrequalLoadBalancer(LoadBalancer):
         Background task to periodically invoke probe scheduling.
         """
         while True:
-            backends = [b for b in await self._registry.list_backends() if b.health]
-            await self._schedule_probe_tasks(backends)
+            now = time.time()
+            if (
+                self._healthy_backends_cache is None
+                or now - self._healthy_backends_cache_time > self._cache_timeout
+            ):
+                all_backends = await self._registry.list_backends()
+                self._healthy_backends_cache = [b for b in all_backends if b.health]
+                self._healthy_backends_cache_time = now
+
+            healthy_backends = self._healthy_backends_cache
+            await self._schedule_probe_tasks(healthy_backends)
             # wait before next scheduling cycle
             await asyncio.sleep(0.01)
 
