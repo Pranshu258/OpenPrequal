@@ -36,3 +36,10 @@ class Backend(BaseModel):
             f"Backend(url={self.url}, port={self.port}, health={self.health}, "
             f"in_flight_requests={self.in_flight_requests}, avg_latency={self.avg_latency})"
         )
+
+
+class RegistrationResponse(BaseModel):
+    """Response model for register/unregister endpoints."""
+
+    status: str
+    backend: Backend

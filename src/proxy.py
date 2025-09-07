@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from algorithms.prequal_load_balancer import PrequalLoadBalancer
 from config.config import Config
 from config.logging_config import setup_logging
-from contracts.backend import Backend
+from contracts.backend import Backend, RegistrationResponse
 from core.backend_registry import BackendRegistry
 from core.probe_manager import ProbeManager
 from core.probe_pool import ProbePool
@@ -92,16 +92,19 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.post("/register")
+@app.post("/register", response_model=RegistrationResponse)
 async def register_backend(data: Backend):
     logger.info(f"Registering backend: {data}")
-    return await registry.register(data)
+    # Use the pydantic Backend instance directly in the response model.
+    await registry.register(data)
+    return RegistrationResponse(status="registered", backend=data)
 
 
-@app.post("/unregister")
+@app.post("/unregister", response_model=RegistrationResponse)
 async def unregister_backend(data: Backend):
     logger.info(f"Unregistering backend: {data}")
-    return await registry.unregister(data)
+    await registry.unregister(data)
+    return RegistrationResponse(status="unregistered", backend=data)
 
 
 @app.api_route(
