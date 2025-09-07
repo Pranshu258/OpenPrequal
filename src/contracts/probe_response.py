@@ -8,4 +8,5 @@ class ProbeResponse(BaseModel):
 
     status: str
     in_flight_requests: int
-    avg_latency: float
+    rif_avg_latency: float
+    overall_avg_latency: float

@@ -100,7 +100,7 @@ class MetricsManager:
         return val
 
     @Profiler.profile
-    async def get_avg_latency(self):
+    def get_rif_avg_latency(self):
         """
         Get the median request latency for the current RIF (requests in-flight) value.
 
@@ -164,3 +164,27 @@ class MetricsManager:
             )
             return float(estimate)
         return 0.0
+
+    @Profiler.profile
+    def get_overall_avg_latency(self):
+        """
+        Get the overall average (mean) request latency across all RIF keys/bins.
+
+        Returns:
+            float: Mean latency in seconds across all recorded samples, or 0.0 if none.
+        """
+        total = 0.0
+        count = 0
+        for dq in self._rif_latencies.values():
+            # deque may be empty; sum up samples and counts
+            for v in dq:
+                total += float(v)
+                count += 1
+
+        if count == 0:
+            logger.debug("No latency samples recorded yet; returning 0.0 for overall average")
+            return 0.0
+
+        avg = total / count
+        logger.debug(f"Overall average latency across all RIF keys: {avg:.4f}s (n={count})")
+        return float(avg)

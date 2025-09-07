@@ -2,6 +2,7 @@ import random
 from typing import Optional
 
 from abstractions.load_balancer import LoadBalancer
+from abstractions.registry import Registry
 from core.profiler import Profiler
 
 
@@ -11,7 +12,7 @@ class LeastLatencyPowerOfTwoChoicesLoadBalancer(LoadBalancer):
     """
 
     @Profiler.profile
-    def __init__(self, registry):
+    def __init__(self, registry: Registry):
         self.registry = registry
 
     @Profiler.profile
@@ -22,5 +23,5 @@ class LeastLatencyPowerOfTwoChoicesLoadBalancer(LoadBalancer):
         if len(backends) == 1:
             return backends[0].url
         b1, b2 = random.sample(backends, 2)
-        backend = b1 if b1.avg_latency <= b2.avg_latency else b2
+        backend = b1 if b1.overall_avg_latency <= b2.overall_avg_latency else b2
         return backend.url

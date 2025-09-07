@@ -11,13 +11,13 @@ class TestBackendContract(unittest.TestCase):
             port=1,
             health=True,
             in_flight_requests=2,
-            avg_latency=3,
+            rif_avg_latency=3,
         )
         self.assertEqual(b.url, "u")
         self.assertEqual(b.port, 1)
         self.assertTrue(b.health)
         self.assertEqual(b.in_flight_requests, 2)
-        self.assertEqual(b.avg_latency, 3)
+        self.assertEqual(b.rif_avg_latency, 3)
 
     def test_backend_equality_and_hash(self):
         b1 = Backend(url="u", port=1)

@@ -57,7 +57,7 @@ class TestHeartbeatClient(unittest.TestCase):
         async def one_iteration():
             async with mock_client():
                 # Simulate one iteration of the heartbeat loop
-                hb.backend.avg_latency = hb.metrics_manager.get_avg_latency()
+                hb.backend.rif_avg_latency = hb.metrics_manager.get_rif_avg_latency()
                 hb.backend.in_flight_requests = hb.metrics_manager.get_in_flight()
                 await client_instance.post(
                     f"{hb.proxy_url}/register", json=hb.backend.model_dump()
@@ -96,7 +96,7 @@ class TestMetricsManager(unittest.TestCase):
         mm.IN_FLIGHT.inc()
         mm.IN_FLIGHT.dec()
         self.assertIsInstance(mm.get_in_flight(), float)
-        self.assertIsInstance(mm.get_avg_latency(), float)
+        self.assertIsInstance(mm.get_rif_avg_latency(), float)
 
 
 class TestProxyHandler(unittest.IsolatedAsyncioTestCase):

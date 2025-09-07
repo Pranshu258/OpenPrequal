@@ -66,8 +66,9 @@ async def health_probe(response: Response):
     logger.info(f"probe requested from {Config.BACKEND_URL}")
     probe_response = ProbeResponse(
         status="ok",
-        in_flight_requests=int(metrics_manager.get_in_flight()),
-        avg_latency=await metrics_manager.get_avg_latency(),
+        in_flight_requests = int(metrics_manager.get_in_flight()),
+        rif_avg_latency = metrics_manager.get_rif_avg_latency(),
+        overall_avg_latency = metrics_manager.get_overall_avg_latency(),
     )
     # Let FastAPI handle model -> JSON serialization. Attach header to Response.
     response.headers["X-Backend-Id"] = Config.BACKEND_URL

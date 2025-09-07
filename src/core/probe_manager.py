@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 import httpx
+from contracts.probe_response import ProbeResponse
 
 from core.probe_pool import ProbePool
 from core.probe_task_queue import ProbeTaskQueue
@@ -35,13 +36,14 @@ class ProbeManager:
                     )
                     if resp.status_code == 200:
                         data = resp.json()
-                        latency = data.get("avg_latency", 0.0)
-                        rif = data.get("in_flight_requests", 0.0)
+                        parsed = ProbeResponse.model_validate(data)
+                        latency = float(parsed.rif_avg_latency)
+                        rif = float(parsed.in_flight_requests)
                         await self.probe_pool.add_probe(backend_url, latency, rif)
                         logger.info(
-                            f"Probe success for {backend_url}: avg_latency={latency}, in_flight_requests={rif}"
+                            f"Probe success for {backend_url}: rif_avg_latency={latency}, in_flight_requests={rif}"
                         )
-                        logger.info(f"Probe avg_latency for {backend_url}: {latency}")
+                        logger.info(f"Probe rif_avg_latency for {backend_url}: {latency}")
                     else:
                         logger.warning(
                             f"Probe failed for {backend_url}: status={resp.status_code}"

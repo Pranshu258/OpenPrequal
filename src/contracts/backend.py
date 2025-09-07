@@ -12,7 +12,8 @@ class Backend(BaseModel):
     port: Optional[int] = None
     health: bool = False
     in_flight_requests: float = 0.0
-    avg_latency: float = 0.0
+    rif_avg_latency: float = 0.0
+    overall_avg_latency: float = 0.0
 
     def __eq__(self, other):
         """
@@ -34,7 +35,7 @@ class Backend(BaseModel):
         """
         return (
             f"Backend(url={self.url}, port={self.port}, health={self.health}, "
-            f"in_flight_requests={self.in_flight_requests}, avg_latency={self.avg_latency})"
+            f"in_flight_requests={self.in_flight_requests}, avg_latency={self.rif_avg_latency})"
         )
 
 
