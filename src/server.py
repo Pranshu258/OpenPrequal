@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
+from fastapi.responses import ORJSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from config.config import Config
@@ -41,7 +42,7 @@ async def lifespan(app):
     await heartbeat_client.stop()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, default_response_class=ORJSONResponse)
 
 # Add RIF load simulation middleware before metrics middleware
 app.add_middleware(LoadSimMiddleware, metrics_manager=metrics_manager)

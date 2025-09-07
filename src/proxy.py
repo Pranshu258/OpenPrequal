@@ -6,6 +6,7 @@ from typing import Any, Type
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.responses import ORJSONResponse
 
 from algorithms.prequal_load_balancer import PrequalLoadBalancer
 from config.config import Config
@@ -89,7 +90,7 @@ async def lifespan(app):
     await client.aclose()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, default_response_class=ORJSONResponse)
 
 
 @app.post("/register", response_model=RegistrationResponse)

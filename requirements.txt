@@ -7,3 +7,4 @@ pytest
 pre-commit
 locust
 matplotlib
+orjson
