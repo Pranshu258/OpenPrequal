@@ -61,7 +61,8 @@ def summarize_backend_distribution(logs_dir, results_dir):
     # Collect average latency for all algorithms for comparison plot
     avg_latencies = {}
     median_latencies = {}
-    p90_latencies = {}
+    # Collect all percentile latency values across algorithms, keyed by percentile name
+    percentiles_latencies = {}
     all_results = []
     for log_file in log_files:
         algorithm = os.path.basename(log_file).split(
@@ -256,10 +257,13 @@ def summarize_backend_distribution(logs_dir, results_dir):
             avg_latency_val = metrics["summary"].get("latency_avg")
             median_latency_val = metrics["summary"].get("latency_median")
         if metrics and "percentiles" in metrics:
-            p90_latency_val = metrics["percentiles"].get("p90")
+            # Store each reported percentile for this algorithm so we can plot them across algorithms later
+            for perc_name, perc_val in metrics["percentiles"].items():
+                # perc_name looks like 'p50', 'p90', 'p99_9', etc.
+                percentiles_latencies.setdefault(perc_name, {})[algorithm] = perc_val
         avg_latencies[algorithm] = avg_latency_val
         median_latencies[algorithm] = median_latency_val
-        p90_latencies[algorithm] = p90_latency_val
+    # Keep individual median/avg maps as before
 
         total_count = sum(counter.values())
         if total_count > 0:
@@ -318,20 +322,28 @@ def summarize_backend_distribution(logs_dir, results_dir):
         plt.savefig(median_bar_path)
         plt.close()
 
-    if p90_latencies:
-        # p90 latency
-        plt.figure()
-        algos = list(p90_latencies.keys())
-        p90s = [p90_latencies[a] for a in algos]
-        plt.bar(algos, p90s, color="green")
-        plt.ylabel("p90 Latency (ms)")
-        plt.xlabel("Algorithm")
-        plt.title("p90 Latency Comparison Across Algorithms")
-        plt.xticks(rotation=45, ha="right")
-        plt.tight_layout()
-        p90_bar_path = os.path.join(results_dir, "p90_latency_comparison.png")
-        plt.savefig(p90_bar_path)
-        plt.close()
+    # Generate bar charts for each collected percentile across algorithms
+    if percentiles_latencies:
+        for perc_name, alg_map in percentiles_latencies.items():
+            # Skip p50 since median is already plotted above
+            if perc_name == "p50":
+                continue
+            if not alg_map:
+                continue
+            plt.figure()
+            algos = list(alg_map.keys())
+            values = [alg_map[a] for a in algos]
+            plt.bar(algos, values, color="green")
+            # Make a human readable label from the key: 'p99_9' -> '99.9%'
+            pct_label = perc_name[1:].replace("_", ".") + "%"
+            plt.ylabel(f"{pct_label} Latency (ms)")
+            plt.xlabel("Algorithm")
+            plt.title(f"{pct_label} Latency Comparison Across Algorithms")
+            plt.xticks(rotation=45, ha="right")
+            plt.tight_layout()
+            perc_bar_path = os.path.join(results_dir, f"{perc_name}_latency_comparison.png")
+            plt.savefig(perc_bar_path)
+            plt.close()
 
 
 if __name__ == "__main__":
