@@ -1,50 +1,51 @@
 {
   "algorithm": "least_rif_power_of_two_choices",
   "distribution": {
-    "http://localhost:8001": 5.382640906226464,
-    "http://localhost:8002": 4.817530215233909,
-    "http://localhost:8003": 4.523447226449025,
-    "http://localhost:8004": 5.41389362803113,
-    "http://localhost:8005": 4.89591818959643,
-    "http://localhost:8006": 5.151575700752628,
-    "http://localhost:8007": 4.543428474815943,
-    "http://localhost:8008": 4.869276525107207,
-    "http://localhost:8009": 4.738629901169671,
-    "http://localhost:8010": 5.15618675806807,
-    "http://localhost:8011": 5.001460168149889,
-    "http://localhost:8012": 5.0378362869717135,
-    "http://localhost:8013": 5.2355994118340226,
-    "http://localhost:8014": 4.807795760901308,
-    "http://localhost:8015": 5.448732727747806,
-    "http://localhost:8016": 4.851344635547153,
-    "http://localhost:8017": 5.251994282288929,
-    "http://localhost:8018": 4.716599293995891,
-    "http://localhost:8019": 4.883109697053534,
-    "http://localhost:8020": 5.273000210059277
+    "http://localhost:8001": 5.405888930301901,
+    "http://localhost:8002": 4.672878618461921,
+    "http://localhost:8003": 4.570008696732513,
+    "http://localhost:8004": 5.430239781339297,
+    "http://localhost:8005": 4.74891290843583,
+    "http://localhost:8006": 5.178283016523792,
+    "http://localhost:8007": 4.593365635482669,
+    "http://localhost:8008": 4.723071188967574,
+    "http://localhost:8009": 4.770778978755125,
+    "http://localhost:8010": 5.193191700832402,
+    "http://localhost:8011": 4.851285874021618,
+    "http://localhost:8012": 5.057025717480433,
+    "http://localhost:8013": 5.253323394210461,
+    "http://localhost:8014": 4.842837619580072,
+    "http://localhost:8015": 5.458069325382035,
+    "http://localhost:8016": 4.893527146229346,
+    "http://localhost:8017": 5.28264380668406,
+    "http://localhost:8018": 4.753385513728413,
+    "http://localhost:8019": 4.918374953410361,
+    "http://localhost:8020": 5.2965585787054295,
+    "unknown": 0.10634861473474966
   },
   "metrics": {
     "percentiles": {
-      "p100": 270.0,
-      "p50": 56.0,
-      "p66": 61.0,
-      "p75": 64.0,
-      "p80": 65.0,
-      "p90": 70.0,
-      "p95": 75.0,
-      "p98": 81.0,
-      "p99": 89.0,
-      "p99_9": 180.0,
-      "p99_99": 240.0
+      "p100": 250.0,
+      "p50": 60.0,
+      "p66": 66.0,
+      "p75": 74.0,
+      "p80": 96.0,
+      "p90": 130.0,
+      "p95": 150.0,
+      "p98": 170.0,
+      "p99": 180.0,
+      "p99_9": 240.0,
+      "p99_99": 250.0
     },
     "summary": {
       "failures_per_second": 0.0,
-      "latency_avg": 57.085634924293146,
-      "latency_max": 269.68250001664273,
-      "latency_median": 56.0,
-      "latency_min": 12.722625018795952,
-      "requests_per_second": 325.25930156278235,
+      "latency_avg": 72.52491310099971,
+      "latency_max": 252.44675000431016,
+      "latency_median": 60.0,
+      "latency_min": 16.09512499999255,
+      "requests_per_second": 279.98122851017206,
       "total_failures": 0,
-      "total_requests": 195183
+      "total_requests": 5828
     }
   },
   "plots": [
@@ -55,5 +56,5 @@
     "results/least_rif_power_of_two_choices_latency.png",
     "results/least_rif_power_of_two_choices_backend_distribution_pie.png"
   ],
-  "total": 195183
+  "total": 201225
 }
