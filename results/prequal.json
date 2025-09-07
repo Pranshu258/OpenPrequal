@@ -1,50 +1,50 @@
 {
   "algorithm": "prequal",
   "distribution": {
-    "http://openprequal-server10:8000": 547,
-    "http://openprequal-server11:8000": 630,
-    "http://openprequal-server12:8000": 513,
-    "http://openprequal-server13:8000": 158,
-    "http://openprequal-server14:8000": 897,
-    "http://openprequal-server15:8000": 1059,
-    "http://openprequal-server16:8000": 244,
-    "http://openprequal-server17:8000": 306,
-    "http://openprequal-server18:8000": 46,
-    "http://openprequal-server19:8000": 1117,
-    "http://openprequal-server1:8000": 313,
-    "http://openprequal-server20:8000": 584,
-    "http://openprequal-server2:8000": 726,
-    "http://openprequal-server3:8000": 139,
-    "http://openprequal-server4:8000": 1259,
-    "http://openprequal-server5:8000": 405,
-    "http://openprequal-server6:8000": 547,
-    "http://openprequal-server7:8000": 157,
-    "http://openprequal-server8:8000": 1308,
-    "http://openprequal-server9:8000": 688
+    "http://localhost:8001": 1.0102495025675038,
+    "http://localhost:8002": 7.197215745533364,
+    "http://localhost:8003": 0.7647810955138769,
+    "http://localhost:8004": 1.4994769266534929,
+    "http://localhost:8005": 6.741834243868418,
+    "http://localhost:8006": 3.8550163759564033,
+    "http://localhost:8007": 0.49196244812001283,
+    "http://localhost:8008": 1.6847748049585987,
+    "http://localhost:8009": 2.1999849573678127,
+    "http://localhost:8010": 7.599948034543353,
+    "http://localhost:8011": 0.26598108730880476,
+    "http://localhost:8012": 1.989729984752241,
+    "http://localhost:8013": 2.3193003808520967,
+    "http://localhost:8014": 4.246466690826046,
+    "http://localhost:8015": 8.582847296770622,
+    "http://localhost:8016": 3.4280107486444535,
+    "http://localhost:8017": 1.9418670641568263,
+    "http://localhost:8018": 19.245338493412014,
+    "http://localhost:8019": 6.585254117920561,
+    "http://localhost:8020": 18.3499600002735
   },
   "metrics": {
     "percentiles": {
       "p100": 340.0,
-      "p50": 110.0,
-      "p66": 120.0,
-      "p75": 140.0,
-      "p80": 140.0,
-      "p90": 160.0,
-      "p95": 180.0,
-      "p98": 210.0,
-      "p99": 240.0,
-      "p99_9": 300.0,
-      "p99_99": 340.0
+      "p50": 64.0,
+      "p66": 69.0,
+      "p75": 73.0,
+      "p80": 75.0,
+      "p90": 81.0,
+      "p95": 86.0,
+      "p98": 93.0,
+      "p99": 100.0,
+      "p99_9": 240.0,
+      "p99_99": 310.0
     },
     "summary": {
       "failures_per_second": 0.0,
-      "latency_avg": 110.8080876811692,
-      "latency_max": 344.3132499996864,
-      "latency_median": 110.0,
-      "latency_min": 26.949374998366693,
-      "requests_per_second": 96.95322229147614,
+      "latency_avg": 65.12919032082708,
+      "latency_max": 343.25912498752587,
+      "latency_median": 64.0,
+      "latency_min": 14.92479199077934,
+      "requests_per_second": 324.59382198173085,
       "total_failures": 0,
-      "total_requests": 11643
+      "total_requests": 194781
     }
   },
   "plots": [
@@ -55,5 +55,5 @@
     "results/prequal_latency.png",
     "results/prequal_backend_distribution_pie.png"
   ],
-  "total": 11643
+  "total": 292502
 }
