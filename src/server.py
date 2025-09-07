@@ -49,12 +49,10 @@ app.middleware("http")(metrics_manager.prometheus_middleware)
 
 
 @app.get("/")
-async def read_root():
-    return Response(
-        content=f'{{"message": "Hello from backend at {Config.BACKEND_URL}!"}}',
-        media_type="application/json",
-        headers={"X-Backend-Id": Config.BACKEND_URL},
-    )
+async def read_root(response: Response):
+    # Return a native dict (FastAPI will serialize). Set header on Response.
+    response.headers["X-Backend-Id"] = Config.BACKEND_URL
+    return {"message": f"Hello from backend at {Config.BACKEND_URL}!"}
 
 
 @app.get("/metrics")
@@ -63,18 +61,16 @@ def metrics():
 
 
 @app.get("/probe", response_model=ProbeResponse)
-async def health_probe():
+async def health_probe(response: Response):
     logger.info(f"probe requested from {Config.BACKEND_URL}")
     probe_response = ProbeResponse(
         status="ok",
         in_flight_requests=int(metrics_manager.get_in_flight()),
         avg_latency=await metrics_manager.get_avg_latency(),
     )
-    return Response(
-        content=probe_response.model_dump_json(),
-        media_type="application/json",
-        headers={"X-Backend-Id": Config.BACKEND_URL},
-    )
+    # Let FastAPI handle model -> JSON serialization. Attach header to Response.
+    response.headers["X-Backend-Id"] = Config.BACKEND_URL
+    return probe_response
 
 
 # Example: log server startup
