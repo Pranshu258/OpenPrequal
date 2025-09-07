@@ -2,6 +2,8 @@ import csv
 import glob
 import os
 from collections import Counter
+from collections import OrderedDict
+
 
 import matplotlib.pyplot as plt
 
@@ -259,10 +261,21 @@ def summarize_backend_distribution(logs_dir, results_dir):
         median_latencies[algorithm] = median_latency_val
         p90_latencies[algorithm] = p90_latency_val
 
+        total_count = sum(counter.values())
+        if total_count > 0:
+            # Build and sort list of (backend, percent) tuples
+            distribution_percent_tuples = sorted(
+                ((k, (v / total_count) * 100) for k, v in counter.items()),
+                key=lambda item: item[1], reverse=True
+            )
+            # Use OrderedDict to preserve order in JSON output
+            distribution_percent = OrderedDict(distribution_percent_tuples)
+        else:
+            distribution_percent = {}
         result = {
             "algorithm": algorithm,
-            "total": sum(counter.values()),
-            "distribution": dict(counter),
+            "total": total_count,
+            "distribution": distribution_percent,
             "metrics": metrics,
             "plots": plots,
         }
