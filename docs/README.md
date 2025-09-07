@@ -21,7 +21,7 @@
 - [License](#license)
 
 ## OpenPrequal: API Gateway & Load Balancer
-OpenPrequal is a reusable, production-ready API gateway and load balancer for any HTTP-based backend service. It is designed to simplify scaling, reliability, and observability for microservices and distributed systems. OpenPrequal is ideal for:
+OpenPrequal is an API gateway and load balancer for any HTTP-based backend service. It is designed to simplify scaling, reliability, and observability for microservices and distributed systems. OpenPrequal is ideal for:
 
 - Load balancing traffic across multiple backend replicas
 - Automatically detecting and routing around unhealthy backends
