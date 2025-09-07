@@ -186,6 +186,6 @@ class PrequalLoadBalancer(LoadBalancer):
             logger.warning("No healthy backends available for prequal load balancer.")
             return None
 
-        cold, hot, rifs_map = await self._classify_backends(healthy_backends)
-        selected = await self._select_backend(cold, hot, rifs_map)
+        cold, hot = await self._classify_backends(healthy_backends)
+        selected = await self._select_backend(cold, hot)
         return selected.url
