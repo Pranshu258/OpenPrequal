@@ -1,50 +1,32 @@
 {
   "algorithm": "least_latency",
   "distribution": {
-    "http://openprequal-server10:8000": 2851,
-    "http://openprequal-server11:8000": 22,
-    "http://openprequal-server12:8000": 18,
-    "http://openprequal-server13:8000": 11,
-    "http://openprequal-server14:8000": 9,
-    "http://openprequal-server15:8000": 18,
-    "http://openprequal-server16:8000": 16,
-    "http://openprequal-server17:8000": 2867,
-    "http://openprequal-server18:8000": 12,
-    "http://openprequal-server19:8000": 10,
-    "http://openprequal-server1:8000": 1533,
-    "http://openprequal-server20:8000": 13,
-    "http://openprequal-server2:8000": 4091,
-    "http://openprequal-server3:8000": 23,
-    "http://openprequal-server4:8000": 12,
-    "http://openprequal-server5:8000": 11,
-    "http://openprequal-server6:8000": 20,
-    "http://openprequal-server7:8000": 16,
-    "http://openprequal-server8:8000": 18,
-    "http://openprequal-server9:8000": 10
+    "http://localhost:8007": 96.88796680497926,
+    "unknown": 3.112033195020747
   },
   "metrics": {
     "percentiles": {
-      "p100": 470.0,
-      "p50": 130.0,
-      "p66": 150.0,
-      "p75": 170.0,
-      "p80": 170.0,
-      "p90": 200.0,
-      "p95": 220.0,
-      "p98": 260.0,
-      "p99": 300.0,
-      "p99_9": 420.0,
-      "p99_99": 470.0
+      "p100": 760.0,
+      "p50": 69.0,
+      "p66": 78.0,
+      "p75": 92.0,
+      "p80": 130.0,
+      "p90": 190.0,
+      "p95": 230.0,
+      "p98": 280.0,
+      "p99": 320.0,
+      "p99_9": 710.0,
+      "p99_99": 760.0
     },
     "summary": {
-      "failures_per_second": 0.0,
-      "latency_avg": 128.98450934624935,
-      "latency_max": 472.20691699840245,
-      "latency_median": 130.0,
-      "latency_min": 16.53404200260411,
-      "requests_per_second": 96.44609822298476,
-      "total_failures": 0,
-      "total_requests": 11581
+      "failures_per_second": 0.19867707979885552,
+      "latency_avg": 94.36323939842363,
+      "latency_max": 761.7199170053937,
+      "latency_median": 69.0,
+      "latency_min": 23.829000012483448,
+      "requests_per_second": 6.38415683086989,
+      "total_failures": 195,
+      "total_requests": 6266
     }
   },
   "plots": [
@@ -55,5 +37,5 @@
     "results/least_latency_latency.png",
     "results/least_latency_backend_distribution_pie.png"
   ],
-  "total": 11581
+  "total": 6266
 }

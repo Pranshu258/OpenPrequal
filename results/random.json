@@ -1,50 +1,51 @@
 {
   "algorithm": "random",
   "distribution": {
-    "http://openprequal-server10:8000": 594,
-    "http://openprequal-server11:8000": 616,
-    "http://openprequal-server12:8000": 580,
-    "http://openprequal-server13:8000": 547,
-    "http://openprequal-server14:8000": 593,
-    "http://openprequal-server15:8000": 566,
-    "http://openprequal-server16:8000": 552,
-    "http://openprequal-server17:8000": 574,
-    "http://openprequal-server18:8000": 546,
-    "http://openprequal-server19:8000": 587,
-    "http://openprequal-server1:8000": 535,
-    "http://openprequal-server20:8000": 582,
-    "http://openprequal-server2:8000": 594,
-    "http://openprequal-server3:8000": 581,
-    "http://openprequal-server4:8000": 630,
-    "http://openprequal-server5:8000": 593,
-    "http://openprequal-server6:8000": 581,
-    "http://openprequal-server7:8000": 587,
-    "http://openprequal-server8:8000": 561,
-    "http://openprequal-server9:8000": 631
+    "http://localhost:8001": 5.210765097123728,
+    "http://localhost:8002": 5.069814561952165,
+    "http://localhost:8003": 4.849579350746597,
+    "http://localhost:8004": 5.171122759106726,
+    "http://localhost:8005": 5.030172223935163,
+    "http://localhost:8006": 3.0524600273091664,
+    "http://localhost:8007": 4.9817204774699375,
+    "http://localhost:8008": 5.003743998590495,
+    "http://localhost:8009": 5.083028674624499,
+    "http://localhost:8010": 4.906840505660045,
+    "http://localhost:8011": 5.157908646434392,
+    "http://localhost:8012": 5.206360392899616,
+    "http://localhost:8013": 5.127075716865613,
+    "http://localhost:8014": 5.285645068933621,
+    "http://localhost:8015": 4.884816984539488,
+    "http://localhost:8016": 5.188741576003171,
+    "http://localhost:8017": 5.043386336607497,
+    "http://localhost:8018": 5.105052195745055,
+    "http://localhost:8019": 4.9817204774699375,
+    "http://localhost:8020": 4.999339294366383,
+    "unknown": 0.6607056336167026
   },
   "metrics": {
     "percentiles": {
-      "p100": 310.0,
-      "p50": 110.0,
-      "p66": 120.0,
-      "p75": 130.0,
-      "p80": 140.0,
-      "p90": 150.0,
-      "p95": 170.0,
-      "p98": 200.0,
-      "p99": 220.0,
-      "p99_9": 270.0,
-      "p99_99": 300.0
+      "p100": 250.0,
+      "p50": 57.0,
+      "p66": 62.0,
+      "p75": 65.0,
+      "p80": 67.0,
+      "p90": 75.0,
+      "p95": 100.0,
+      "p98": 140.0,
+      "p99": 160.0,
+      "p99_9": 220.0,
+      "p99_99": 240.0
     },
     "summary": {
       "failures_per_second": 0.0,
-      "latency_avg": 109.38048441463776,
-      "latency_max": 314.0618750003341,
-      "latency_median": 110.0,
-      "latency_min": 22.355791999871144,
-      "requests_per_second": 96.8455093870214,
+      "latency_avg": 61.03039047962911,
+      "latency_max": 250.31370800570585,
+      "latency_median": 57.0,
+      "latency_min": 10.620249988278374,
+      "requests_per_second": 312.2965200583549,
       "total_failures": 0,
-      "total_requests": 11630
+      "total_requests": 22553
     }
   },
   "plots": [
@@ -55,5 +56,5 @@
     "results/random_latency.png",
     "results/random_backend_distribution_pie.png"
   ],
-  "total": 11630
+  "total": 22703
 }
