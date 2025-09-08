@@ -35,6 +35,9 @@ class TestRegistryAbstraction(unittest.TestCase):
             def list_backends(self):
                 return [Backend(url="u")]
 
+            async def mark_backend_unhealthy(self, backend_url: str) -> bool:
+                return True
+
         reg = DummyRegistry()
         self.assertTrue(reg.register("u"))
         self.assertTrue(reg.unregister("u"))

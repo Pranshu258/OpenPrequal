@@ -189,6 +189,123 @@ class TestProxyHandler(unittest.IsolatedAsyncioTestCase):
         expected_url = "http://backend:8001/api/v1/users"
         self.assertEqual(call_args[0][1], expected_url)  # url is the second positional argument
 
+    async def test_consecutive_proxy_failures_tracking(self):
+        """Test that consecutive proxy failures are tracked correctly"""
+        mock_request = MagicMock()
+        mock_request.method = "GET"
+        mock_request.headers = {}
+        mock_request.query_params = {}
+        mock_request.body = AsyncMock(return_value=b'')
+        
+        # Mock client to return 500 error
+        import httpx
+        self.mock_client.request = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+        
+        backend_url = "http://backend1:8001"
+        
+        # First failure
+        await self.proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        self.assertEqual(self.proxy_handler._consecutive_failures.get(backend_url, 0), 1)
+        
+        # Second failure
+        await self.proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        self.assertEqual(self.proxy_handler._consecutive_failures.get(backend_url, 0), 2)
+
+    async def test_consecutive_failures_reset_on_success(self):
+        """Test that consecutive failures are reset when proxy succeeds"""
+        mock_request = MagicMock()
+        mock_request.method = "GET"
+        mock_request.headers = {}
+        mock_request.query_params = {}
+        mock_request.body = AsyncMock(return_value=b'')
+        
+        backend_url = "http://backend1:8001"
+        
+        # Simulate failure first
+        import httpx
+        self.mock_client.request = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+        await self.proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        self.assertEqual(self.proxy_handler._consecutive_failures.get(backend_url, 0), 1)
+        
+        # Then simulate success
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b'{"success": true}'
+        mock_response.headers = {}
+        self.mock_client.request = AsyncMock(return_value=mock_response)
+        
+        await self.proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        
+        # Consecutive failures should be reset
+        self.assertEqual(self.proxy_handler._consecutive_failures.get(backend_url, 0), 0)
+
+    async def test_server_error_counts_as_failure(self):
+        """Test that 5xx responses count as failures"""
+        mock_request = MagicMock()
+        mock_request.method = "GET"
+        mock_request.headers = {}
+        mock_request.query_params = {}
+        mock_request.body = AsyncMock(return_value=b'')
+        
+        # Mock response with 500 status
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.content = b'{"error": "Internal server error"}'
+        mock_response.headers = {}
+        self.mock_client.request = AsyncMock(return_value=mock_response)
+        
+        backend_url = "http://backend1:8001"
+        
+        await self.proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        self.assertEqual(self.proxy_handler._consecutive_failures.get(backend_url, 0), 1)
+
+    async def test_backend_marked_unhealthy_after_threshold(self):
+        """Test that backend is marked unhealthy after consecutive failure threshold"""
+        # Create a mock registry
+        mock_registry = AsyncMock()
+        mock_registry.mark_backend_unhealthy = AsyncMock(return_value=True)
+        
+        # Create proxy handler with registry and threshold of 2
+        proxy_handler = ProxyHandler(self.mock_client, registry=mock_registry, consecutive_failure_threshold=2)
+        
+        mock_request = MagicMock()
+        mock_request.method = "GET"
+        mock_request.headers = {}
+        mock_request.query_params = {}
+        mock_request.body = AsyncMock(return_value=b'')
+        
+        import httpx
+        self.mock_client.request = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+        
+        backend_url = "http://backend1:8001"
+        
+        # First failure - should not mark unhealthy yet
+        await proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        mock_registry.mark_backend_unhealthy.assert_not_called()
+        
+        # Second failure - should mark unhealthy
+        await proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        mock_registry.mark_backend_unhealthy.assert_called_once_with(backend_url)
+
+    async def test_no_registry_graceful_handling(self):
+        """Test that proxy handler handles missing registry gracefully"""
+        proxy_handler = ProxyHandler(self.mock_client, registry=None, consecutive_failure_threshold=1)
+        
+        mock_request = MagicMock()
+        mock_request.method = "GET"
+        mock_request.headers = {}
+        mock_request.query_params = {}
+        mock_request.body = AsyncMock(return_value=b'')
+        
+        import httpx
+        self.mock_client.request = AsyncMock(side_effect=httpx.RequestError("Connection failed"))
+        
+        backend_url = "http://backend1:8001"
+        
+        # This should not raise an exception
+        await proxy_handler.handle_proxy(mock_request, "/test", backend_url)
+        self.assertEqual(proxy_handler._consecutive_failures.get(backend_url, 0), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
