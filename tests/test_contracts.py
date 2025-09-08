@@ -41,10 +41,16 @@ class TestBackendContract(unittest.TestCase):
 
 class TestProbeResponseContract(unittest.TestCase):
     def test_probe_response_fields(self):
-        p = ProbeResponse(status="ok", in_flight_requests=1, avg_latency=2.0)
+        p = ProbeResponse(
+            status="ok", 
+            in_flight_requests=1, 
+            rif_avg_latency=2.0,
+            overall_avg_latency=2.0
+        )
         self.assertEqual(p.status, "ok")
         self.assertEqual(p.in_flight_requests, 1)
-        self.assertEqual(p.avg_latency, 2.0)
+        self.assertEqual(p.rif_avg_latency, 2.0)
+        self.assertEqual(p.overall_avg_latency, 2.0)
 
     def test_probe_response_validation(self):
         # status is required
