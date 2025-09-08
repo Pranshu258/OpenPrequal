@@ -1,50 +1,51 @@
 {
   "algorithm": "prequal",
   "distribution": {
-    "http://localhost:8001": 5.919453088110649,
-    "http://localhost:8002": 3.2758109974807095,
-    "http://localhost:8003": 3.1268238461561024,
-    "http://localhost:8004": 0.8629816786863321,
-    "http://localhost:8005": 3.417906026647584,
-    "http://localhost:8006": 5.731899380882133,
-    "http://localhost:8007": 4.179852127319492,
-    "http://localhost:8008": 2.0720358742290355,
-    "http://localhost:8009": 0.9558053664702656,
-    "http://localhost:8010": 5.817537664714387,
-    "http://localhost:8011": 8.875000366602242,
-    "http://localhost:8012": 5.401810721795823,
-    "http://localhost:8013": 1.2138933451428136,
-    "http://localhost:8014": 4.766122433417701,
-    "http://localhost:8015": 9.674779818693196,
-    "http://localhost:8016": 1.8423962295692569,
-    "http://localhost:8017": 10.28641899996774,
-    "http://localhost:8018": 8.779537142672794,
-    "http://localhost:8019": 5.737178453173162,
-    "http://localhost:8020": 8.06275643826858
+    "http://localhost:8001": 5.729803465871773,
+    "http://localhost:8002": 2.3722528166523515,
+    "http://localhost:8003": 2.272116404789572,
+    "http://localhost:8004": 3.1895114434396,
+    "http://localhost:8005": 5.1842570605769716,
+    "http://localhost:8006": 5.197190926084979,
+    "http://localhost:8007": 3.0879603900368817,
+    "http://localhost:8008": 3.8196332036578586,
+    "http://localhost:8009": 1.3900874046380034,
+    "http://localhost:8010": 4.287980599201738,
+    "http://localhost:8011": 9.837821452028495,
+    "http://localhost:8012": 4.6801394432375085,
+    "http://localhost:8013": 1.1897135350881625,
+    "http://localhost:8014": 3.4200980144495525,
+    "http://localhost:8015": 6.6925680796241105,
+    "http://localhost:8016": 1.3480523417369776,
+    "http://localhost:8017": 7.586015257919467,
+    "http://localhost:8018": 7.598949123427475,
+    "http://localhost:8019": 5.248320113171323,
+    "http://localhost:8020": 5.636639215884403,
+    "unknown": 10.230889708482797
   },
   "metrics": {
     "percentiles": {
-      "p100": 360.0,
-      "p50": 64.0,
-      "p66": 70.0,
-      "p75": 73.0,
-      "p80": 75.0,
-      "p90": 81.0,
-      "p95": 87.0,
-      "p98": 95.0,
-      "p99": 110.0,
-      "p99_9": 250.0,
-      "p99_99": 330.0
+      "p100": 660.0,
+      "p50": 68.0,
+      "p66": 73.0,
+      "p75": 77.0,
+      "p80": 80.0,
+      "p90": 87.0,
+      "p95": 95.0,
+      "p98": 110.0,
+      "p99": 190.0,
+      "p99_9": 450.0,
+      "p99_99": 590.0
     },
     "summary": {
       "failures_per_second": 0.0,
-      "latency_avg": 65.39413472036576,
-      "latency_max": 360.4505410185084,
-      "latency_median": 64.0,
-      "latency_min": 10.831374995177612,
-      "requests_per_second": 324.28799477795457,
+      "latency_avg": 70.96823722050216,
+      "latency_max": 660.7424170069862,
+      "latency_median": 68.0,
+      "latency_min": 17.86787499440834,
+      "requests_per_second": 322.5052991667931,
       "total_failures": 0,
-      "total_requests": 194602
+      "total_requests": 96785
     }
   },
   "plots": [
@@ -55,5 +56,5 @@
     "results/prequal_latency.png",
     "results/prequal_backend_distribution_pie.png"
   ],
-  "total": 681938
+  "total": 989650
 }
