@@ -99,12 +99,6 @@ class BackendRegistry(Registry):
                             f"Health transition: {backend} healthy -> unhealthy"
                         )
                     backend.health = False
-                else:
-                    if not backend.health:
-                        logger.info(
-                            f"Health transition: {backend} unhealthy -> healthy"
-                        )
-                    backend.health = True
             logger.debug(
                 f"Listing backends: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
             )
