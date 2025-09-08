@@ -1,6 +1,6 @@
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 from contracts.backend import Backend
 from core.backend_registry import BackendRegistry
@@ -30,14 +30,15 @@ class TestBackendRegistry(unittest.TestCase):
         self.assertNotIn(("u", 1), self.reg._backends)
 
     def test_list_backends_timeout_marks_unhealthy(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.reg.register(self.backend))
-        # Simulate timeout
         import time
-
-        self.reg._last_heartbeat[("u", 1)] -= 2
-        backends = self.reg.list_backends()
+        import asyncio
+        registry = BackendRegistry(heartbeat_timeout=1)
+        backend = Backend(url="u", port=1, health=True)
+        asyncio.run(registry.register(backend))
+        # Fast forward the timestamp to simulate timeout
+        key = (backend.url, backend.port)
+        registry._last_heartbeat[key] = time.time() - 2
+        backends = asyncio.run(registry.list_backends())
         self.assertFalse(backends[0].health)
 
 
@@ -46,8 +47,9 @@ class TestHeartbeatClient(unittest.TestCase):
     def test_heartbeat_loop_registers(self, mock_client):
         backend = Backend(url="u", port=1, health=True)
         metrics = MagicMock()
-        metrics.get_avg_latency.return_value = 1.0
+        metrics.get_rif_avg_latency.return_value = 1.0
         metrics.get_in_flight.return_value = 1.0
+        metrics.get_overall_avg_latency.return_value = 1.0
         client_instance = mock_client.return_value.__aenter__.return_value
         client_instance.post = AsyncMock(
             return_value=MagicMock(status_code=200, text="ok")
@@ -59,6 +61,7 @@ class TestHeartbeatClient(unittest.TestCase):
                 # Simulate one iteration of the heartbeat loop
                 hb.backend.rif_avg_latency = hb.metrics_manager.get_rif_avg_latency()
                 hb.backend.in_flight_requests = hb.metrics_manager.get_in_flight()
+                hb.backend.overall_avg_latency = hb.metrics_manager.get_overall_avg_latency()
                 await client_instance.post(
                     f"{hb.proxy_url}/register", json=hb.backend.model_dump()
                 )
@@ -66,7 +69,9 @@ class TestHeartbeatClient(unittest.TestCase):
         import asyncio
 
         asyncio.run(one_iteration())
-        self.assertTrue(metrics.get_avg_latency.called)
+        self.assertTrue(metrics.get_rif_avg_latency.called)
+        self.assertTrue(metrics.get_in_flight.called)
+        self.assertTrue(metrics.get_overall_avg_latency.called)
         self.assertTrue(client_instance.post.called)
 
 

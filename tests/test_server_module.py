@@ -25,7 +25,8 @@ class TestServerModule(unittest.TestCase):
         data = response.json()
         self.assertIn("status", data)
         self.assertIn("in_flight_requests", data)
-        self.assertIn("avg_latency", data)
+        self.assertIn("rif_avg_latency", data)
+        self.assertIn("overall_avg_latency", data)
 
 
 if __name__ == "__main__":
