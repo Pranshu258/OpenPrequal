@@ -9,7 +9,6 @@ class Backend(BaseModel):
     """
 
     url: str
-    port: Optional[int] = None
     health: bool = False
     in_flight_requests: float = 0.0
     rif_avg_latency: float = 0.0
@@ -21,20 +20,20 @@ class Backend(BaseModel):
         """
         if not isinstance(other, Backend):
             return False
-        return self.url == other.url and self.port == other.port
+        return self.url == other.url
 
     def __hash__(self):
         """
         Compute hash based on URL and port.
         """
-        return hash((self.url, self.port))
+        return hash(self.url)
 
     def __repr__(self):
         """
         Return a string representation of the Backend instance.
         """
         return (
-            f"Backend(url={self.url}, port={self.port}, health={self.health}, "
+            f"Backend(url={self.url}, health={self.health}, "
             f"in_flight_requests={self.in_flight_requests}, avg_latency={self.rif_avg_latency})"
         )
 

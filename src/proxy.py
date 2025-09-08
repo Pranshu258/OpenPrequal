@@ -72,14 +72,16 @@ def load_balancer_factory(registry):
 probe_pool = ProbePool()
 probe_task_queue = ProbeTaskQueue()
 
-# Initialize probe manager
-probe_manager = ProbeManager(probe_pool, probe_task_queue)
-
-# Initialize registry and load balancer
+# Initialize registry first (needed by probe manager)
 registry = registry_factory()
+
+# Initialize probe manager with registry for health management
+probe_manager = ProbeManager(probe_pool, probe_task_queue, registry=registry)
+
+# Initialize load balancer
 lb_instance = load_balancer_factory(registry)
 client = httpx.AsyncClient()
-proxy_handler = ProxyHandler(client)
+proxy_handler = ProxyHandler(client, registry=registry)
 
 
 @asynccontextmanager

@@ -37,11 +37,6 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_history = set()
         self._request_timestamps = deque()  # For RPS tracking
         self._last_probe_time = {}  # backend_id -> last probe timestamp
-        # cache for healthy backends to avoid repeated filtering
-        self._healthy_backends_cache = None
-        self._healthy_backends_cache_time = 0
-        # cache timeout in seconds
-        self._cache_timeout = 0.005  # 5ms cache timeout for hot path
         logger.info("PrequalLoadBalancer initialized.")
         # start background probe scheduler loop
         self._scheduler_task = asyncio.create_task(self._probe_scheduler_loop())
@@ -148,16 +143,8 @@ class PrequalLoadBalancer(LoadBalancer):
         Background task to periodically invoke probe scheduling.
         """
         while True:
-            now = time.time()
-            if (
-                self._healthy_backends_cache is None
-                or now - self._healthy_backends_cache_time > self._cache_timeout
-            ):
-                all_backends = await self._registry.list_backends()
-                self._healthy_backends_cache = [b for b in all_backends if b.health]
-                self._healthy_backends_cache_time = now
-
-            healthy_backends = self._healthy_backends_cache
+            all_backends = await self._registry.list_backends()
+            healthy_backends = [b for b in all_backends if b.health]
             await self._schedule_probe_tasks(healthy_backends)
             # wait before next scheduling cycle
             await asyncio.sleep(0.01)
@@ -168,19 +155,11 @@ class PrequalLoadBalancer(LoadBalancer):
         Select the next backend to route a request to, based on probe pool hot/cold classification and latency/rif.
         Also schedules probe tasks for two randomly selected backends.
         """
-        # Cache healthy backends for a short time to avoid repeated registry calls
         now = time.time()
         self._request_timestamps.append(now)
         
-        if (
-            self._healthy_backends_cache is None
-            or now - self._healthy_backends_cache_time > self._cache_timeout
-        ):
-            all_backends = await self._registry.list_backends()
-            self._healthy_backends_cache = [b for b in all_backends if b.health]
-            self._healthy_backends_cache_time = now
-
-        healthy_backends = self._healthy_backends_cache
+        all_backends = await self._registry.list_backends()
+        healthy_backends = [b for b in all_backends if b.health]
 
         if not healthy_backends:
             logger.warning("No healthy backends available for prequal load balancer.")

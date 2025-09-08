@@ -25,9 +25,9 @@ class BackendRegistry(Registry):
         Args:
             heartbeat_timeout (Optional[int]): Timeout in seconds for backend heartbeats.
         """
-        # Use a dict to ensure canonical Backend objects by (url, port)
-        self._backends = {}
-        self._last_heartbeat = {}  # (url, port) -> timestamp
+        # Use URL as key since it already contains host:port info
+        self._backends = {}  # url -> Backend
+        self._last_heartbeat = {}  # url -> timestamp
         self.heartbeat_timeout = heartbeat_timeout
         self._lock = asyncio.Lock()
         logger.info(
@@ -45,16 +45,14 @@ class BackendRegistry(Registry):
         Returns:
             dict: Registration status and backend data.
         """
-        key = (backend.url, backend.port)
         async with self._lock:
-            self._backends[key] = backend
-            self._last_heartbeat[key] = time.time()
+            self._backends[backend.url] = backend
+            self._last_heartbeat[backend.url] = time.time()
             logger.info(f"Registered backend: {backend}")
             logger.debug(
                 f"Current backends after register: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
             )
-        # else: keep the existing object (preserve probe state)
-        return {"status": "registered", "backend": self._backends[key].model_dump()}
+        return {"status": "registered", "backend": self._backends[backend.url].model_dump()}
 
     @Profiler.profile
     async def unregister(self, backend: Backend):
@@ -67,10 +65,9 @@ class BackendRegistry(Registry):
         Returns:
             dict: Unregistration status and backend data.
         """
-        key = (backend.url, backend.port)
         async with self._lock:
-            self._backends.pop(key, None)
-            self._last_heartbeat.pop(key, None)
+            self._backends.pop(backend.url, None)
+            self._last_heartbeat.pop(backend.url, None)
             logger.info(f"Unregistered backend: {backend}")
             logger.debug(
                 f"Current backends after unregister: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
@@ -88,8 +85,8 @@ class BackendRegistry(Registry):
         async with self._lock:
             now = time.time()
             timeout = self.heartbeat_timeout or 10  # default 10s if not set
-            for key, backend in self._backends.items():
-                last = self._last_heartbeat.get(key, 0)
+            for url, backend in self._backends.items():
+                last = self._last_heartbeat.get(url, 0)
                 if now - last > timeout:
                     if backend.health:
                         logger.warning(
@@ -103,3 +100,42 @@ class BackendRegistry(Registry):
                 f"Listing backends: {[str(b) + ' (health=' + str(b.health) + ')' for b in self._backends.values()]}"
             )
             return list(self._backends.values())
+
+    @Profiler.profile
+    async def mark_backend_unhealthy(self, backend_url: str) -> bool:
+        """
+        Mark a specific backend as unhealthy by its URL.
+
+        Args:
+            backend_url (str): The URL of the backend to mark as unhealthy.
+
+        Returns:
+            bool: True if backend was found and marked unhealthy, False if not found.
+        """
+        async with self._lock:
+            backend = self._backends.get(backend_url)
+            if backend:
+                if backend.health:  # Only log if transitioning from healthy to unhealthy
+                    logger.info(f"Health transition: {backend} healthy -> unhealthy (probe failures)")
+                backend.health = False
+                return True
+            logger.warning(f"Backend with URL {backend_url} not found in registry")
+            return False
+
+    @Profiler.profile
+    async def is_backend_healthy(self, backend_url: str) -> bool:
+        """
+        Check if a specific backend is healthy by its URL.
+
+        Args:
+            backend_url (str): The URL of the backend to check.
+
+        Returns:
+            bool: True if backend exists and is healthy, False otherwise.
+        """
+        async with self._lock:
+            backend = self._backends.get(backend_url)
+            if not backend:
+                return False
+            
+            return backend.health

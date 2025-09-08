@@ -37,7 +37,7 @@ class RoundRobinLoadBalancer(LoadBalancer):
         # Sort by (url, port) for stable, predictable order
         backends = sorted(
             (b for b in await self.registry.list_backends() if b.health),
-            key=lambda b: (b.url, b.port),
+            key=lambda b: b.url,
         )
         if not backends:
             logger.warning("No healthy backends available for round robin.")
