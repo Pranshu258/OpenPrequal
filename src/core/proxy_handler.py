@@ -45,7 +45,7 @@ class ProxyHandler:
             path = getattr(module, func_name)(path, request)
             logger.debug(f"Path rewritten using custom hook: {path}")
 
-        url = f"{backend_url}/{path}"
+        url = f"{backend_url.rstrip('/')}/{path.lstrip('/')}"
         method = request.method
         headers = dict(request.headers)
         body = await request.body()
