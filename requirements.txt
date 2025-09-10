@@ -8,3 +8,5 @@ pre-commit
 locust
 matplotlib
 orjson
+redis
+aioredis
