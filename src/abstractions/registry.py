@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List
 
 from contracts.backend import Backend
 
@@ -10,35 +10,31 @@ class Registry(ABC):
     """
 
     @abstractmethod
-    def register(self, url: str, port: Optional[int] = None, **kwargs):
+    async def register(self, backend: Backend):
         """
         Register a backend service.
 
         Args:
-            url (str): The URL of the backend service.
-            port (Optional[int]): The port of the backend service.
-            **kwargs: Additional metadata for registration.
+            backend (Backend): The backend instance to register.
 
         Returns:
-            None
+            dict: Registration status and backend data.
         """
 
     @abstractmethod
-    def unregister(self, url: str, port: Optional[int] = None, **kwargs):
+    async def unregister(self, backend: Backend):
         """
         Unregister a backend service.
 
         Args:
-            url (str): The URL of the backend service.
-            port (Optional[int]): The port of the backend service.
-            **kwargs: Additional metadata for unregistration.
+            backend (Backend): The backend instance to unregister.
 
         Returns:
-            None
+            dict: Unregistration status and backend data.
         """
 
     @abstractmethod
-    def list_backends(self) -> List[Backend]:
+    async def list_backends(self) -> List[Backend]:
         """
         Return a list of all registered backends and their metadata.
 
