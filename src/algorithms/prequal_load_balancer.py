@@ -41,7 +41,7 @@ class PrequalLoadBalancer(LoadBalancer):
         # Cache for healthy backends to reduce registry lock contention
         self._cached_healthy_backends = []
         self._cache_timestamp = 0
-        self._cache_ttl = 0.005  # 100ms cache TTL for scheduler
+        self._cache_ttl = 0.001
         
         logger.info("PrequalLoadBalancer initialized.")
         # start background probe scheduler loop
