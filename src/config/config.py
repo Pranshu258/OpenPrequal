@@ -38,3 +38,8 @@ class Config:
 
     # Load balancer class selection
     LOAD_BALANCER_CLASS = os.environ.get("LOAD_BALANCER_CLASS", "default")
+
+    # Registry configuration
+    REGISTRY_TYPE = os.environ.get("REGISTRY_TYPE", "memory")  # "memory" or "redis"
+    REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
+    REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
