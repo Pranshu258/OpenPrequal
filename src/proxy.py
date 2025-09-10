@@ -12,7 +12,7 @@ from algorithms.prequal_load_balancer import PrequalLoadBalancer
 from config.config import Config
 from config.logging_config import setup_logging
 from contracts.backend import Backend, RegistrationResponse
-from core.backend_registry import BackendRegistry
+from core.registry_factory import RegistryFactory
 from core.probe_manager import ProbeManager
 from core.probe_pool import ProbePool
 from core.probe_task_queue import ProbeTaskQueue
@@ -21,11 +21,7 @@ from core.proxy_handler import ProxyHandler
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Built-in registry and load balancer classes
-REGISTRY_CLASSES = {
-    "default": BackendRegistry,
-    # Add more mappings here if needed
-}
+# Built-in load balancer classes
 LB_CLASSES = {
     "default": PrequalLoadBalancer,
     # Add more mappings here if needed
@@ -39,17 +35,8 @@ def import_from_string(path: str) -> Type[Any]:
 
 
 def registry_factory():
-    key = getattr(Config, "REGISTRY_CLASS", "default")
-    heartbeat_timeout = getattr(Config, "HEARTBEAT_TIMEOUT", None)
-    if key in REGISTRY_CLASSES:
-        logger.info(f"Using built-in registry class: {key}")
-        return REGISTRY_CLASSES[key](heartbeat_timeout=heartbeat_timeout)
-    try:
-        logger.info(f"Importing registry class from string: {key}")
-        return import_from_string(key)(heartbeat_timeout=heartbeat_timeout)
-    except Exception as e:
-        logger.error(f"Could not import registry class '{key}': {e}")
-        raise ImportError(f"Could not import registry class '{key}': {e}")
+    """Create registry instance using the new RegistryFactory."""
+    return RegistryFactory.create_registry()
 
 
 def load_balancer_factory(registry):
