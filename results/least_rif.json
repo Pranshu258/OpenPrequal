@@ -1,38 +1,32 @@
 {
   "algorithm": "least_rif",
   "distribution": {
-    "http://localhost:8001": 4.035573454148838,
-    "http://localhost:8007": 28.702671604760706,
-    "http://localhost:8009": 1.3867414572171683,
-    "http://localhost:8011": 0.9594524948161999,
-    "http://localhost:8013": 0.0035956995433461575,
-    "http://localhost:8014": 29.283976364268334,
-    "http://localhost:8016": 4.843407284887276,
-    "unknown": 30.784581640358134
+    "http://localhost:8018": 95.68661971830986,
+    "unknown": 4.313380281690141
   },
   "metrics": {
     "percentiles": {
-      "p100": 700.0,
-      "p50": 65.0,
-      "p66": 71.0,
-      "p75": 74.0,
-      "p80": 77.0,
-      "p90": 83.0,
-      "p95": 90.0,
-      "p98": 100.0,
-      "p99": 200.0,
-      "p99_9": 440.0,
-      "p99_99": 650.0
+      "p100": 1200.0,
+      "p50": 61.0,
+      "p66": 66.0,
+      "p75": 70.0,
+      "p80": 72.0,
+      "p90": 79.0,
+      "p95": 88.0,
+      "p98": 120.0,
+      "p99": 130.0,
+      "p99_9": 1200.0,
+      "p99_99": 1200.0
     },
     "summary": {
-      "failures_per_second": 0.0,
-      "latency_avg": 68.3229123533306,
-      "latency_max": 698.7820409995038,
-      "latency_median": 65.0,
-      "latency_min": 8.377833000849932,
-      "requests_per_second": 322.44080242317824,
-      "total_failures": 0,
-      "total_requests": 96766
+      "failures_per_second": 0.025598894230457116,
+      "latency_avg": 65.62234073742825,
+      "latency_max": 1228.4930830355734,
+      "latency_median": 61.0,
+      "latency_min": 19.181458977982402,
+      "requests_per_second": 1.095829587634568,
+      "total_failures": 26,
+      "total_requests": 1113
     }
   },
   "plots": [
@@ -43,5 +37,5 @@
     "results/least_rif_latency.png",
     "results/least_rif_backend_distribution_pie.png"
   ],
-  "total": 166866
+  "total": 1136
 }
