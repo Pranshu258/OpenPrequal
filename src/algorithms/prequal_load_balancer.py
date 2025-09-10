@@ -37,43 +37,57 @@ class PrequalLoadBalancer(LoadBalancer):
         self._probe_history = set()
         self._request_timestamps = deque()  # For RPS tracking
         self._last_probe_time = {}  # backend_id -> last probe timestamp
+        
+        # Cache for healthy backends to reduce registry lock contention
+        self._cached_healthy_backends = []
+        self._cache_timestamp = 0
+        self._cache_ttl = 0.005  # 100ms cache TTL for scheduler
+        
         logger.info("PrequalLoadBalancer initialized.")
         # start background probe scheduler loop
         self._scheduler_task = asyncio.create_task(self._probe_scheduler_loop())
 
     @Profiler.profile
-    async def _classify_backends(self, backends):
-        """Classify backends as hot or cold using probe pool's temperature property"""
+    async def _classify_and_select_backend(self, backends):
+        """Combined classification and selection using batch data retrieval to minimize lock contention"""
         backend_urls = [b.url for b in backends]
-        temps = await self._probe_pool.get_current_temperatures(backend_urls)
-        cold = [b for b, t in zip(backends, temps) if t == "cold"]
-        hot = [b for b, t in zip(backends, temps) if t == "hot"]
-        return cold, hot
-
-    @Profiler.profile
-    async def _select_backend(self, cold, hot):
-        """Select backend from cold (lowest latency) or hot (lowest current rif), reusing RIF map if provided."""
+        
+        # Single batch call to get all data with one lock acquisition
+        temperatures, latencies, rifs = await self._probe_pool.get_backend_data_batch(backend_urls)
+        
+        # Classify backends as hot or cold
+        cold = []
+        hot = []
+        for i, backend in enumerate(backends):
+            temp = temperatures[i]
+            if temp == "cold":
+                cold.append((backend, latencies[i]))
+            elif temp == "hot":
+                hot.append((backend, rifs[i]))
+        
+        # Select backend
         if cold:
-            cold_urls = [b.url for b in cold]
-            latencies = await self._probe_pool.get_current_latencies(cold_urls)
-            latencies = [l if l is not None else float("inf") for l in latencies]
-            best = min(latencies)
-            candidates = [cold[i] for i, l in enumerate(latencies) if l == best]
-            selected = (
-                candidates[0] if len(candidates) == 1 else random.choice(candidates)
-            )
-            logger.info(f"Selected cold backend (lowest latency): {selected.url}")
-        else:
-            hot_urls = [b.url for b in hot]
-            rifs_list = await self._probe_pool.get_current_rifs(hot_urls)
-            cur_rifs = [r if r is not None else float("inf") for r in rifs_list]
-            best = min(cur_rifs)
-            candidates = [hot[i] for i, r in enumerate(cur_rifs) if r == best]
-            selected = (
-                candidates[0] if len(candidates) == 1 else random.choice(candidates)
-            )
-            logger.info(f"Selected hot backend (lowest current rif): {selected.url}")
-        return selected
+            # Find backends with lowest latency
+            valid_cold = [(b, lat) for b, lat in cold if lat is not None]
+            if valid_cold:
+                best_latency = min(lat for _, lat in valid_cold)
+                candidates = [b for b, lat in valid_cold if lat == best_latency]
+                selected = candidates[0] if len(candidates) == 1 else random.choice(candidates)
+                logger.info(f"Selected cold backend (lowest latency): {selected.url}")
+                return selected
+        
+        if hot:
+            # Find backends with lowest current rif
+            valid_hot = [(b, rif) for b, rif in hot if rif is not None]
+            if valid_hot:
+                best_rif = min(rif for _, rif in valid_hot)
+                candidates = [b for b, rif in valid_hot if rif == best_rif]
+                selected = candidates[0] if len(candidates) == 1 else random.choice(candidates)
+                logger.info(f"Selected hot backend (lowest current rif): {selected.url}")
+                return selected
+        
+        # Fallback: return a random available backend
+        return random.choice(backends) if backends else None
 
     @Profiler.profile
     async def _schedule_probe_tasks(self, healthy_backends):
@@ -93,21 +107,21 @@ class PrequalLoadBalancer(LoadBalancer):
         rps = max(len(self._request_timestamps) / window, 1e-6)  # Avoid div by zero
         R = min(50.0 / rps, 1.0)  # Cap at 1.0
 
-        # Pre-compute backend IDs set once
+        # Pre-compute backend IDs set once and reuse
         backend_ids = {b.url for b in healthy_backends}
 
-        # Optimize set intersection
-        self._probe_history.intersection_update(backend_ids)
+        # Optimize set intersection - only remove non-existent backends
+        if self._probe_history:
+            self._probe_history &= backend_ids
 
         # --- Ensure at least one probe every 20 seconds per backend ---
         min_probe_interval = 20.0
 
-        # Use list comprehension for forced probes
-        forced_backends = [
-            backend_id
-            for backend_id in backend_ids
+        # Use set comprehension for forced probes (more efficient)
+        forced_backends = {
+            backend_id for backend_id in backend_ids
             if now - self._last_probe_time.get(backend_id, 0) >= min_probe_interval
-        ]
+        }
 
         # --- Probabilistic probe scheduling ---
         available = backend_ids - self._probe_history
@@ -115,8 +129,9 @@ class PrequalLoadBalancer(LoadBalancer):
             self._probe_history.clear()
             available = backend_ids
 
-        scheduled_backends = set(forced_backends)
+        scheduled_backends = forced_backends.copy()  # Start with forced backends
         if random.random() < R and available:
+            # Use random.choice on pre-converted list only when needed
             available_list = list(available)
             backend_id = (
                 available_list[0]
@@ -125,17 +140,29 @@ class PrequalLoadBalancer(LoadBalancer):
             )
             scheduled_backends.add(backend_id)
 
-        # Update probe history and last probe time, and batch all probe tasks
+        # Batch update probe history and last probe time
         if not scheduled_backends:
             logger.debug(f"No probe scheduled (R={R:.3f}, RPS={rps:.2f})")
         else:
+            # Batch all updates
+            self._probe_history.update(scheduled_backends)
+            current_time = now  # Use same timestamp for all
             for backend_id in scheduled_backends:
                 asyncio.create_task(self._probe_task_queue.add_task(backend_id))
-                self._probe_history.add(backend_id)
-                self._last_probe_time[backend_id] = now
+                self._last_probe_time[backend_id] = current_time
                 logger.info(
                     f"Scheduled probe for backend {backend_id} (R={R:.3f}, RPS={rps:.2f})"
                 )
+
+    @Profiler.profile
+    async def _get_cached_healthy_backends(self):
+        """Get healthy backends with caching to reduce registry lock contention in scheduler"""
+        now = time.time()
+        if now - self._cache_timestamp > self._cache_ttl:
+            all_backends = await self._registry.list_backends()
+            self._cached_healthy_backends = [b for b in all_backends if b.health]
+            self._cache_timestamp = now
+        return self._cached_healthy_backends
 
     @Profiler.profile
     async def _probe_scheduler_loop(self):
@@ -143,8 +170,7 @@ class PrequalLoadBalancer(LoadBalancer):
         Background task to periodically invoke probe scheduling.
         """
         while True:
-            all_backends = await self._registry.list_backends()
-            healthy_backends = [b for b in all_backends if b.health]
+            healthy_backends = await self._get_cached_healthy_backends()
             await self._schedule_probe_tasks(healthy_backends)
             # wait before next scheduling cycle
             await asyncio.sleep(0.01)
@@ -165,6 +191,5 @@ class PrequalLoadBalancer(LoadBalancer):
             logger.warning("No healthy backends available for prequal load balancer.")
             return None
 
-        cold, hot = await self._classify_backends(healthy_backends)
-        selected = await self._select_backend(cold, hot)
-        return selected.url
+        selected = await self._classify_and_select_backend(healthy_backends)
+        return selected.url if selected else None

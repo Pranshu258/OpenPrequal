@@ -17,6 +17,11 @@ class ProbePool:
     @Profiler.profile
     async def add_probe(self, backend_id, latency, rif_value):
         now = time.time()
+        
+        # Pre-compute temperature outside the lock to reduce lock time
+        temp_rif_values = None
+        temp_temperature = None
+        
         async with self._lock:
             if backend_id not in self.probes:
                 if len(self.probes) >= self.max_backends:
@@ -33,9 +38,22 @@ class ProbePool:
             entry = self.probes[backend_id]
             entry["latencies"].append(latency)
             entry["rif_values"].append(rif_value)
-            entry["temperature"] = "hot" if rif_value > median(entry["rif_values"]) else "cold"
+            
+            # Copy rif_values for median calculation outside lock
+            temp_rif_values = list(entry["rif_values"])
+            
             entry["timestamp"] = now
             entry["current_latency"] = sum(entry["latencies"]) / len(entry["latencies"])
+        
+        # Calculate median outside lock to minimize lock time
+        if temp_rif_values:
+            rif_median = median(temp_rif_values)
+            temp_temperature = "hot" if rif_value > rif_median else "cold"
+            
+            # Quick lock to update temperature
+            async with self._lock:
+                if backend_id in self.probes:  # Double-check in case it was removed
+                    self.probes[backend_id]["temperature"] = temp_temperature
 
     @Profiler.profile
     async def get_current_rifs(self, backend_ids):
@@ -55,3 +73,17 @@ class ProbePool:
         """Return a list of current temperatures for the given backend_ids, in order."""
         async with self._lock:
             return [self.probes.get(bid, {}).get("temperature", None) for bid in backend_ids]
+
+    @Profiler.profile
+    async def get_backend_data_batch(self, backend_ids):
+        """Return a batch of all backend data (temperatures, latencies, rifs) in a single lock acquisition."""
+        async with self._lock:
+            temperatures = []
+            latencies = []
+            rifs = []
+            for bid in backend_ids:
+                probe = self.probes.get(bid, {})
+                temperatures.append(probe.get("temperature", None))
+                latencies.append(probe.get("current_latency", None))
+                rifs.append(probe.get("current_rif", None))
+            return temperatures, latencies, rifs
