@@ -1,32 +1,51 @@
 {
   "algorithm": "least_latency",
   "distribution": {
-    "http://localhost:8008": 99.90328820116055,
-    "unknown": 0.09671179883945842
+    "http://localhost:8001": 5.412870898775226,
+    "http://localhost:8002": 5.45098970792153,
+    "http://localhost:8003": 5.364255605950953,
+    "http://localhost:8004": 5.431101633584328,
+    "http://localhost:8005": 1.1844453160822703,
+    "http://localhost:8006": 5.405136647644092,
+    "http://localhost:8007": 5.397954843022324,
+    "http://localhost:8008": 5.969736980216891,
+    "http://localhost:8009": 5.357626247838553,
+    "http://localhost:8010": 5.377514322175755,
+    "http://localhost:8011": 5.307906061995547,
+    "http://localhost:8012": 5.433863866131162,
+    "http://localhost:8013": 5.415080684812693,
+    "http://localhost:8014": 5.36149337340412,
+    "http://localhost:8015": 4.059376950826736,
+    "http://localhost:8016": 5.41563313132206,
+    "http://localhost:8017": 5.358731140857286,
+    "http://localhost:8018": 5.413423345284593,
+    "http://localhost:8019": 5.442150563771663,
+    "http://localhost:8020": 2.440156231872849,
+    "unknown": 0.0005524465093667306
   },
   "metrics": {
     "percentiles": {
-      "p100": 740.0,
-      "p50": 60.0,
-      "p66": 65.0,
-      "p75": 69.0,
-      "p80": 70.0,
-      "p90": 77.0,
-      "p95": 85.0,
-      "p98": 110.0,
-      "p99": 120.0,
-      "p99_9": 720.0,
-      "p99_99": 740.0
+      "p100": 330.0,
+      "p50": 64.0,
+      "p66": 69.0,
+      "p75": 73.0,
+      "p80": 75.0,
+      "p90": 81.0,
+      "p95": 86.0,
+      "p98": 93.0,
+      "p99": 100.0,
+      "p99_9": 140.0,
+      "p99_99": 260.0
     },
     "summary": {
-      "failures_per_second": 0.0013745132198746783,
-      "latency_avg": 63.961506161791036,
-      "latency_max": 736.9304170133546,
-      "latency_median": 60.0,
-      "latency_min": 30.042458965908736,
-      "requests_per_second": 1.4212466693504173,
-      "total_failures": 1,
-      "total_requests": 1034
+      "failures_per_second": 0.0,
+      "latency_avg": 64.77647020827048,
+      "latency_max": 329.0062500163913,
+      "latency_median": 64.0,
+      "latency_min": 15.742457995656878,
+      "requests_per_second": 299.92169732523246,
+      "total_failures": 0,
+      "total_requests": 179979
     }
   },
   "plots": [
@@ -37,5 +56,5 @@
     "results/least_latency_latency.png",
     "results/least_latency_backend_distribution_pie.png"
   ],
-  "total": 1034
+  "total": 181013
 }
