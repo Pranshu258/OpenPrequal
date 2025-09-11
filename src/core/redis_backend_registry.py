@@ -166,8 +166,7 @@ class RedisBackendRegistry(Registry):
                         existing_data = await redis.get(backend_key)
                         if existing_data:
                             existing_backend = Backend.model_validate_json(existing_data)
-                            # Preserve critical state only
-                            backend.health = existing_backend.health
+                            # Preserve metrics but update health from the new registration
                             backend.in_flight_requests = existing_backend.in_flight_requests
                             backend.rif_avg_latency = existing_backend.rif_avg_latency
                             backend.overall_avg_latency = existing_backend.overall_avg_latency
