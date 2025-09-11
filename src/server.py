@@ -23,7 +23,6 @@ metrics_manager = MetricsManager()
 
 backend = Backend(
     url=Config.BACKEND_URL,
-    port=int(Config.BACKEND_PORT),
     health=True,
 )
 
