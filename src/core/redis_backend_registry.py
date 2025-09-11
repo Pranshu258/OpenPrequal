@@ -4,8 +4,8 @@ import logging
 import time
 from typing import List, Optional
 
-import aioredis
-from redis.exceptions import RedisError
+from redis.asyncio import Redis
+from redis.exceptions import RedisError, WatchError
 
 from abstractions.registry import Registry
 from config.logging_config import setup_logging
@@ -39,7 +39,7 @@ class RedisBackendRegistry(Registry):
         self.redis_url = redis_url
         self.db = db
         self.heartbeat_timeout = heartbeat_timeout or 10
-        self._redis: Optional[aioredis.Redis] = None
+        self._redis: Optional[Redis] = None
         self._connection_lock = asyncio.Lock()  # Only for connection management
         self._connection_healthy = False
         
@@ -52,7 +52,7 @@ class RedisBackendRegistry(Registry):
             f"heartbeat_timeout={self.heartbeat_timeout}, db={self.db}"
         )
 
-    async def _get_redis(self) -> aioredis.Redis:
+    async def _get_redis(self) -> Redis:
         """
         Get Redis connection with fast path optimization.
         
@@ -76,7 +76,7 @@ class RedisBackendRegistry(Registry):
                     except:
                         pass  # Ignore close errors
                     
-                self._redis = aioredis.from_url(
+                self._redis = Redis.from_url(
                     self.redis_url,
                     db=self.db,
                     decode_responses=True,
@@ -132,7 +132,7 @@ class RedisBackendRegistry(Registry):
         Returns:
             str: Redis key for the backend.
         """
-        return f"{self.backend_key_prefix}{backend.url}:{backend.port}"
+        return f"{self.backend_key_prefix}{backend.url}"
 
     def _get_heartbeat_key(self, backend: Backend) -> str:
         """
@@ -144,7 +144,7 @@ class RedisBackendRegistry(Registry):
         Returns:
             str: Redis key for the heartbeat.
         """
-        return f"{self.heartbeat_key_prefix}{backend.url}:{backend.port}"
+        return f"{self.heartbeat_key_prefix}{backend.url}"
 
     @Profiler.profile
     async def register(self, backend: Backend):
@@ -181,16 +181,16 @@ class RedisBackendRegistry(Registry):
                         
                         return backend.model_dump()
                         
-                    except aioredis.WatchError:
+                    except WatchError:
                         continue  # Quick retry without logging
         
         try:
             backend_data = await self._execute_redis_operation(_register_operation)
-            logger.info(f"Registered: {backend.url}:{backend.port}")
+            logger.info(f"Registered: {backend.url}")
             return {"status": "registered", "backend": backend_data}
             
         except Exception as e:
-            logger.error(f"Registration failed for {backend.url}:{backend.port}: {e}")
+            logger.error(f"Registration failed for {backend.url}: {e}")
             raise
 
     @Profiler.profile
@@ -215,11 +215,11 @@ class RedisBackendRegistry(Registry):
         
         try:
             backend_obj = await self._execute_redis_operation(_unregister_operation)
-            logger.info(f"Unregistered: {backend.url}:{backend.port}")
+            logger.info(f"Unregistered: {backend.url}")
             return {"status": "unregistered", "backend": backend_obj.model_dump()}
             
         except Exception as e:
-            logger.error(f"Unregistration failed for {backend.url}:{backend.port}: {e}")
+            logger.error(f"Unregistration failed for {backend.url}: {e}")
             raise
 
     async def _get_all_backends_from_redis(self) -> List[Backend]:
@@ -312,6 +312,59 @@ class RedisBackendRegistry(Registry):
         
         return await self._execute_redis_operation(_list_backends_operation)
 
+    @Profiler.profile
+    async def mark_backend_unhealthy(self, backend_url: str) -> bool:
+        """
+        Mark a specific backend as unhealthy by its URL.
+
+        Args:
+            backend_url (str): The URL of the backend to mark as unhealthy.
+
+        Returns:
+            bool: True if backend was found and marked unhealthy, False if not found.
+        """
+        try:
+            # Create a temporary backend to use the existing update method
+            from contracts.backend import Backend
+            temp_backend = Backend(url=backend_url, health=False)
+            
+            return await self.update_backend_health(temp_backend, False)
+        except Exception as e:
+            logger.error(f"Failed to mark backend unhealthy {backend_url}: {e}")
+            return False
+
+    @Profiler.profile
+    async def is_backend_healthy(self, backend_url: str) -> bool:
+        """
+        Check if a specific backend is healthy by its URL.
+
+        Args:
+            backend_url (str): The URL of the backend to check.
+
+        Returns:
+            bool: True if backend exists and is healthy, False otherwise.
+        """
+        async def _check_health_operation(redis):
+            try:
+                # Create a temporary backend to get the key format
+                from contracts.backend import Backend
+                temp_backend = Backend(url=backend_url, health=False)
+                backend_key = self._get_backend_key(temp_backend)
+                
+                backend_data = await redis.get(backend_key)
+                if backend_data:
+                    backend = Backend.model_validate_json(backend_data)
+                    return backend.health
+                return False
+            except Exception:
+                return False
+        
+        try:
+            return await self._execute_redis_operation(_check_health_operation)
+        except Exception as e:
+            logger.error(f"Failed to check backend health {backend_url}: {e}")
+            return False
+
     async def update_backend_health(self, backend: Backend, health: bool):
         """
         Optimized health update with minimal operations.
@@ -336,15 +389,15 @@ class RedisBackendRegistry(Registry):
                             return False  # No update needed
                         return False
                         
-                    except aioredis.WatchError:
+                    except WatchError:
                         continue
         
         try:
             updated = await self._execute_redis_operation(_update_health_operation)
             if updated:
-                logger.info(f"Health updated: {backend.url}:{backend.port} -> {health}")
+                logger.info(f"Health updated: {backend.url} -> {health}")
         except Exception as e:
-            logger.error(f"Health update failed for {backend.url}:{backend.port}: {e}")
+            logger.error(f"Health update failed for {backend.url}: {e}")
             raise
 
     async def update_backend_metrics(
@@ -389,15 +442,15 @@ class RedisBackendRegistry(Registry):
                             return changed
                         return False
                         
-                    except aioredis.WatchError:
+                    except WatchError:
                         continue
         
         try:
             updated = await self._execute_redis_operation(_update_metrics_operation)
             if updated:
-                logger.debug(f"Metrics updated: {backend.url}:{backend.port}")
+                logger.debug(f"Metrics updated: {backend.url}")
         except Exception as e:
-            logger.error(f"Metrics update failed for {backend.url}:{backend.port}: {e}")
+            logger.error(f"Metrics update failed for {backend.url}: {e}")
             raise
 
     async def cleanup_expired_backends(self):
