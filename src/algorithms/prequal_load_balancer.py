@@ -41,7 +41,7 @@ class PrequalLoadBalancer(LoadBalancer):
         # Cache for healthy backends to reduce registry lock contention
         self._cached_healthy_backends = []
         self._cache_timestamp = 0
-        self._cache_ttl = 0.001
+        self._cache_ttl = 0.01
         
         logger.info("PrequalLoadBalancer initialized.")
         # start background probe scheduler loop
@@ -173,7 +173,7 @@ class PrequalLoadBalancer(LoadBalancer):
             healthy_backends = await self._get_cached_healthy_backends()
             await self._schedule_probe_tasks(healthy_backends)
             # wait before next scheduling cycle
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.001)
 
     @Profiler.profile
     async def get_next_backend(self) -> Optional[str]:
