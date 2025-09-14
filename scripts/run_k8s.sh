@@ -2,14 +2,21 @@
 
 set -e
 
+# Get load balancer class from command line argument or use default
+LOAD_BALANCER_CLASS=${1:-"default"}
+# Get number of backend servers from command line argument or use default
+NUM_SERVERS=${2:-20}
+
 # Set the base directory to the location of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 CHART_DIR="$SCRIPT_DIR/../k8s/openprequal"
 
 cd "$CHART_DIR"
 
-echo "Installing OpenPrequal..."
-helm upgrade --install openprequal .
+echo "Installing OpenPrequal with load balancer: $LOAD_BALANCER_CLASS and $NUM_SERVERS backend servers"
+helm upgrade --install openprequal . \
+  --set proxy.env.LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" \
+  --set server.replicaCount="$NUM_SERVERS"
 
 echo "Waiting for pods to be ready..."
 kubectl wait --for=condition=Ready pod -l app=openprequal-server --timeout=120s || true
