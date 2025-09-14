@@ -1,0 +1,9 @@
+FROM redis:7-alpine
+
+# Lightweight local Redis image wrapper.
+# This mirrors the official Redis image but provides a Dockerfile so the project
+# can build a local redis image (for air-gapped or consistent builds).
+
+VOLUME /data
+
+CMD ["redis-server", "--appendonly", "yes"]
