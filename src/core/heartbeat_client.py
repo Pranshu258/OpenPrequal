@@ -84,6 +84,10 @@ class HeartbeatClient:
                         logger.warning(
                             f"[Heartbeat] Failed to register with proxy: {resp.text}"
                         )
+                except httpx.ConnectError as e:
+                    logger.error(f"[Heartbeat] Connection error - cannot reach proxy at {self.proxy_url}: {e}")
+                except httpx.TimeoutException as e:
+                    logger.error(f"[Heartbeat] Timeout error - proxy at {self.proxy_url} did not respond: {e}")
                 except Exception as e:
                     logger.error(f"[Heartbeat] Error registering with proxy: {e}")
                 await asyncio.sleep(self.heartbeat_interval)
