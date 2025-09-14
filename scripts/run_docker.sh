@@ -54,10 +54,6 @@ if ! docker exec "$REDIS_CONTAINER" redis-cli ping >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Redis is ready."
-
-# Start proxy on the network and supply Redis env
-echo "Starting proxy..."
 docker run -d --name openprequal-proxy --network $NETWORK -p 8000:8000 \
   -e REGISTRY_TYPE=redis \
   -e REDIS_URL=redis://$REDIS_CONTAINER:6379 \
@@ -65,20 +61,7 @@ docker run -d --name openprequal-proxy --network $NETWORK -p 8000:8000 \
   -e LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" \
   pranshug258/openprequal-proxy:latest
 
-echo "Waiting for proxy to accept connections..."
-# Wait for proxy to respond on port 8000 inside container network
-for i in {1..15}; do
-  curl -sS --fail http://localhost:8000/ >/dev/null 2>&1 && break
-  sleep 2
-done
-
-if ! curl -sS --fail http://localhost:8000/ >/dev/null 2>&1; then
-  echo "Proxy did not become ready in time. Showing proxy logs:"
-  docker logs openprequal-proxy --tail 100
-  exit 1
-fi
-
-echo "Proxy is ready."
+echo "Proceeding to start backends."
 
 # Start backend servers dynamically based on NUM_SERVERS parameter
 echo "Starting $NUM_SERVERS backend servers..."
