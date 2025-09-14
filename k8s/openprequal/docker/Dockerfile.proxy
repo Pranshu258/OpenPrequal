@@ -16,4 +16,7 @@ EXPOSE 8000
 
 ENV PYTHONPATH=src
 ENV LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS
-CMD ["uvicorn", "proxy:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV REGISTRY_TYPE=redis
+ENV REDIS_URL=redis://redis:6379
+ENV REDIS_DB=0
+CMD ["uvicorn", "proxy:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "10"]
