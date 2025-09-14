@@ -20,19 +20,38 @@ if ! redis-cli ping >/dev/null 2>&1; then
   echo "  Manual start: redis-server"
   echo "  Docker: docker run -d --name redis -p 6379:6379 redis:7-alpine"
   echo ""
-  echo "Starting Redis with Docker..."
-  docker stop redis 2>/dev/null || true
-  docker rm redis 2>/dev/null || true
-  docker run -d --name redis -p 6379:6379 \
-    -v redis_data:/data \
-    redis:7-alpine redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-  
-  echo "Waiting for Redis to start..."
-  sleep 5
-  
-  # Verify Redis is running
+  echo "Starting local redis-server (preferred for local testing)..."
+  # Try Homebrew/service first
+  if command -v brew >/dev/null 2>&1 && brew services list | grep -q redis; then
+    echo "Starting Redis via Homebrew services..."
+    brew services start redis || true
+  elif command -v systemctl >/dev/null 2>&1; then
+    echo "Starting Redis via systemctl..."
+    sudo systemctl start redis || true
+  elif command -v redis-server >/dev/null 2>&1; then
+    echo "Launching redis-server in background with temporary data dir..."
+    REDIS_DIR="${REDIS_DIR:-$(mktemp -d /tmp/openprequal-redis-XXXX)}"
+    redis-server --dir "$REDIS_DIR" --appendonly yes --daemonize yes || {
+      echo "[ERROR] Failed to start redis-server locally."
+      exit 1
+    }
+  else
+    echo "Redis not found. Please install Redis or start it manually. Examples:" \
+         "\n  macOS (Homebrew): brew install redis && brew services start redis" \
+         "\n  Linux (systemd): sudo apt install redis-server && sudo systemctl start redis" \
+         "\n  Manual: redis-server"
+    exit 1
+  fi
+
+  echo "Waiting for Redis to accept PING..."
+  for i in {1..15}; do
+    if redis-cli ping >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
   if ! redis-cli ping >/dev/null 2>&1; then
-    echo "Failed to start Redis. Please start it manually."
+    echo "Failed to detect running Redis after startup attempts. Please start Redis manually." 
     exit 1
   fi
 fi
@@ -64,6 +83,14 @@ else
 fi
 echo "Starting proxy server on port 8000 with LOAD_BALANCER_CLASS=$LOAD_BALANCER_CLASS"
 nohup env PYTHONPATH=src LOAD_BALANCER_CLASS="$LOAD_BALANCER_CLASS" REGISTRY_TYPE="$REGISTRY_TYPE" REDIS_URL="$REDIS_URL" REDIS_DB="$REDIS_DB" .venv/bin/uvicorn proxy:app --port 8000 --workers 10 > logs/proxy_8000.log 2>&1 &
+PROXY_PID=$!
+sleep 1
+if ! kill -0 "$PROXY_PID" >/dev/null 2>&1; then
+  echo "[ERROR] Failed to start proxy; check logs/proxy_8000.log"
+else
+  # disown if shell supports it
+  (disown "$PROXY_PID" 2>/dev/null) || true
+fi
 
 # Number of backend servers to start (default: 2)
 NUM_SERVERS=${2:-20}
@@ -75,14 +102,16 @@ START_PORT=${4:-8001}
 for ((i=0; i<$NUM_SERVERS; i++)); do
   PORT=$((START_PORT + i))
   echo "Starting backend server on port $PORT"
-  PROXY_URL=$PROXY_URL BACKEND_PORT=$PORT REGISTRY_TYPE="$REGISTRY_TYPE" REDIS_URL="$REDIS_URL" REDIS_DB="$REDIS_DB" nohup env PYTHONPATH=src .venv/bin/uvicorn server:app --port $PORT --workers 10 > logs/backend_$PORT.log 2>&1 &
+  nohup env PYTHONPATH=src PROXY_URL=$PROXY_URL BACKEND_PORT=$PORT REGISTRY_TYPE="$REGISTRY_TYPE" REDIS_URL="$REDIS_URL" REDIS_DB="$REDIS_DB" .venv/bin/uvicorn server:app --port $PORT --workers 10 > logs/backend_$PORT.log 2>&1 &
+  BACK_PID=$!
+  sleep 0.2
+  if ! kill -0 "$BACK_PID" >/dev/null 2>&1; then
+    echo "[WARN] Backend on port $PORT failed to start. See logs/backend_$PORT.log"
+  else
+    (disown "$BACK_PID" 2>/dev/null) || true
+  fi
 done
 
 echo "Started $NUM_SERVERS backend servers. Logs: backend_<PORT>.log"
 echo "Redis UI available at: http://localhost:8081 (if you want to monitor Redis)"
 echo "To start Redis UI: docker run -d --name redis-ui -p 8081:8081 -e REDIS_HOSTS=local:localhost:6379 rediscommander/redis-commander:latest"
-
-# Kill all uvicorn processes running src.server:app or src.proxy:app
-ps aux | grep 'uvicorn' | grep -E 'server:app|proxy:app' | grep -v grep | awk '{print $2}' | xargs -r kill
-
-echo "Killed all backend and proxy servers. Waiting 20 seconds for processes to terminate..."

@@ -45,14 +45,6 @@ echo "Run time: $RUN_TIME"
 echo "Proxy restart script: $PROXY_RESTART_SCRIPT"
 echo "================================="
 
-echo "Setting up Redis for load testing..."
-if ! bash scripts/setup_redis.sh local; then
-    echo "[ERROR] Failed to setup Redis. Aborting load tests."
-    exit 1
-fi
-
-echo "Redis is ready for load testing"
-
 function run_test() {
     LB_CLASS=$1
     LABEL=$2
