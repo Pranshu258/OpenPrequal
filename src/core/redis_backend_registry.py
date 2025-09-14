@@ -173,9 +173,15 @@ class RedisBackendRegistry(Registry):
                         
                         # Single atomic transaction
                         pipe.multi()
-                        backend_json = backend.model_dump_json()  # Direct JSON string
-                        pipe.set(backend_key, backend_json)
-                        pipe.set(heartbeat_key, current_time)
+                        backend_json = backend.model_dump_json()
+                        
+                        # Set TTL for automatic cleanup (heartbeat_timeout * 3 for safety margin)
+                        ttl_seconds = max(self.heartbeat_timeout * 3, 30)  # Minimum 30 seconds
+                        
+                        # Use SETEX to set key with TTL in one operation
+                        pipe.setex(backend_key, ttl_seconds, backend_json)
+                        pipe.setex(heartbeat_key, ttl_seconds, str(current_time))
+                        
                         await pipe.execute()
                         
                         return backend.model_dump()
@@ -370,19 +376,29 @@ class RedisBackendRegistry(Registry):
         """
         async def _update_health_operation(redis):
             backend_key = self._get_backend_key(backend)
+            heartbeat_key = self._get_heartbeat_key(backend)
             
             async with redis.pipeline(transaction=True) as pipe:
                 while True:
                     try:
-                        await pipe.watch(backend_key)
+                        await pipe.watch(backend_key, heartbeat_key)
                         backend_data = await redis.get(backend_key)
+                        heartbeat_data = await redis.get(heartbeat_key)
                         
                         if backend_data:
                             backend_obj = Backend.model_validate_json(backend_data)
                             if backend_obj.health != health:  # Only update if changed
                                 backend_obj.health = health
                                 pipe.multi()
-                                pipe.set(backend_key, backend_obj.model_dump_json())
+                                
+                                # Refresh TTL when updating
+                                ttl_seconds = max(self.heartbeat_timeout * 3, 30)
+                                pipe.setex(backend_key, ttl_seconds, backend_obj.model_dump_json())
+                                
+                                # Also refresh heartbeat TTL if heartbeat exists
+                                if heartbeat_data:
+                                    pipe.setex(heartbeat_key, ttl_seconds, heartbeat_data)
+                                
                                 await pipe.execute()
                                 return True
                             return False  # No update needed
@@ -411,12 +427,14 @@ class RedisBackendRegistry(Registry):
         """
         async def _update_metrics_operation(redis):
             backend_key = self._get_backend_key(backend)
+            heartbeat_key = self._get_heartbeat_key(backend)
             
             async with redis.pipeline(transaction=True) as pipe:
                 while True:
                     try:
-                        await pipe.watch(backend_key)
+                        await pipe.watch(backend_key, heartbeat_key)
                         backend_data = await redis.get(backend_key)
+                        heartbeat_data = await redis.get(heartbeat_key)
                         
                         if backend_data:
                             backend_obj = Backend.model_validate_json(backend_data)
@@ -435,7 +453,14 @@ class RedisBackendRegistry(Registry):
                             
                             if changed:
                                 pipe.multi()
-                                pipe.set(backend_key, backend_obj.model_dump_json())
+                                # Refresh TTL when updating metrics
+                                ttl_seconds = max(self.heartbeat_timeout * 3, 30)
+                                pipe.setex(backend_key, ttl_seconds, backend_obj.model_dump_json())
+                                
+                                # Also refresh heartbeat TTL if it exists
+                                if heartbeat_data:
+                                    pipe.setex(heartbeat_key, ttl_seconds, heartbeat_data)
+                                
                                 await pipe.execute()
                             
                             return changed
@@ -450,74 +475,6 @@ class RedisBackendRegistry(Registry):
                 logger.debug(f"Metrics updated: {backend.url}")
         except Exception as e:
             logger.error(f"Metrics update failed for {backend.url}: {e}")
-            raise
-
-    async def cleanup_expired_backends(self):
-        """
-        Optimized cleanup with minimal Redis round trips.
-        """
-        async def _cleanup_operation(redis):
-            now = time.time()
-            timeout_threshold = self.heartbeat_timeout * 2  # Grace period
-            
-            # Get all backend keys in one operation
-            backend_keys = await redis.keys(f"{self.backend_key_prefix}*")
-            if not backend_keys:
-                return 0
-            
-            # Batch get backend data and heartbeats
-            all_keys = []
-            for backend_key in backend_keys:
-                all_keys.append(backend_key)  # Backend data
-                # Extract backend info from key to construct heartbeat key
-                key_suffix = backend_key[len(self.backend_key_prefix):]
-                all_keys.append(f"{self.heartbeat_key_prefix}{key_suffix}")  # Heartbeat
-            
-            async with redis.pipeline(transaction=False) as pipe:
-                for key in all_keys:
-                    pipe.get(key)
-                all_values = await pipe.execute()
-            
-            # Process results efficiently
-            expired_keys = []
-            for i in range(0, len(all_values), 2):
-                backend_data = all_values[i]
-                heartbeat_data = all_values[i + 1]
-                backend_key = all_keys[i]
-                heartbeat_key = all_keys[i + 1]
-                
-                should_expire = False
-                
-                if not backend_data:
-                    should_expire = True
-                elif heartbeat_data:
-                    try:
-                        if now - float(heartbeat_data) > timeout_threshold:
-                            should_expire = True
-                    except ValueError:
-                        should_expire = True
-                else:
-                    should_expire = True
-                
-                if should_expire:
-                    expired_keys.extend([backend_key, heartbeat_key])
-            
-            # Batch delete expired keys
-            if expired_keys:
-                async with redis.pipeline(transaction=False) as pipe:
-                    pipe.delete(*expired_keys)  # Delete all keys in one command
-                    await pipe.execute()
-                return len(expired_keys) // 2  # Each backend has 2 keys
-            
-            return 0
-        
-        try:
-            cleaned_count = await self._execute_redis_operation(_cleanup_operation)
-            if cleaned_count > 0:
-                logger.info(f"Cleaned up {cleaned_count} expired backends")
-            return cleaned_count
-        except Exception as e:
-            logger.error(f"Cleanup failed: {e}")
             raise
 
     async def close(self):
