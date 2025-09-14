@@ -9,6 +9,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import ORJSONResponse
 
 from algorithms.prequal_load_balancer import PrequalLoadBalancer
+from algorithms.round_robin_load_balancer import RoundRobinLoadBalancer
+from algorithms.random_load_balancer import RandomLoadBalancer
+from algorithms.least_latency_load_balancer import LeastLatencyLoadBalancer
+from algorithms.least_latency_power_of_two_choices_load_balancer import LeastLatencyPowerOfTwoChoicesLoadBalancer
+from algorithms.least_rif_load_balancer import LeastRIFLoadBalancer
+from algorithms.least_rif_power_of_two_choices_load_balancer import LeastRIFPowerOfTwoChoicesLoadBalancer
 from config.config import Config
 from config.logging_config import setup_logging
 from contracts.backend import Backend, RegistrationResponse
@@ -21,9 +27,16 @@ from core.proxy_handler import ProxyHandler
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Built-in load balancer classes
+# Built-in load balancer classes with friendly names
 LB_CLASSES = {
     "default": PrequalLoadBalancer,
+    "prequal": PrequalLoadBalancer,
+    "round_robin": RoundRobinLoadBalancer, 
+    "random": RandomLoadBalancer,
+    "least_latency": LeastLatencyLoadBalancer,
+    "least_latency_p2c": LeastLatencyPowerOfTwoChoicesLoadBalancer,
+    "least_rif": LeastRIFLoadBalancer,
+    "least_rif_p2c": LeastRIFPowerOfTwoChoicesLoadBalancer,
     # Add more mappings here if needed
 }
 
@@ -43,10 +56,13 @@ def load_balancer_factory(registry):
     key = getattr(Config, "LOAD_BALANCER_CLASS", "default")
     if key in LB_CLASSES:
         logger.info(f"Using built-in load balancer class: {key}")
-        if key == "default":
-            # PrequalLoadBalancer needs probe_pool and probe_task_queue
-            return LB_CLASSES[key](registry, probe_pool, probe_task_queue)
-        return LB_CLASSES[key](registry)
+        lb_class = LB_CLASSES[key]
+        
+        # PrequalLoadBalancer needs probe_pool and probe_task_queue
+        if lb_class == PrequalLoadBalancer:
+            return lb_class(registry, probe_pool, probe_task_queue)
+        else:
+            return lb_class(registry)
     try:
         logger.info(f"Importing load balancer class from string: {key}")
         return import_from_string(key)(registry)
