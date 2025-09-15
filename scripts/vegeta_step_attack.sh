@@ -36,7 +36,6 @@ if [[ -z "$TARGETS" || -z "$RATES" ]]; then
   exit 1
 fi
 
-rm -r "$OUTDIR"
 mkdir -p "$OUTDIR"
 
 IFS=',' read -r -a rate_arr <<< "$RATES"
@@ -58,6 +57,8 @@ for r in "${rate_arr[@]}"; do
   vegeta report -type=json "$binfile" > "$jsonfile"
 
   echo "Wrote: $binfile, $txtfile, $jsonfile"
+  rm "$binfile"
+
 done
 
 echo "All runs completed."
