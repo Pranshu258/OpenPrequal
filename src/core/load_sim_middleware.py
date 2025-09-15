@@ -15,7 +15,7 @@ class LoadSimMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, metrics_manager: MetricsManager):
         super().__init__(app)
         self.metrics_manager = metrics_manager
-        self.jitter_mul = 1
+        self.jitter_mul = 1 + random.random()
 
     async def dispatch(self, request: Request, call_next):
         rif_count = int(self.metrics_manager.get_in_flight())
