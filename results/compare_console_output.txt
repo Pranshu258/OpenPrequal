@@ -1,0 +1,5 @@
+(See earlier run of scripts/vegeta_compare.py)
+
+Wrote 9 CSV files to ../results
+
+[Console tables omitted, available in terminal history]

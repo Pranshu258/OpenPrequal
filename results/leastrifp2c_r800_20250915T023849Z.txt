@@ -1,0 +1,10 @@
+Requests      [total, rate, throughput]  4000, 800.20, 202.54
+Duration      [total, attack, wait]      19.55699775s, 4.998768792s, 14.558228958s
+Latencies     [mean, 50, 95, 99, max]    11.709156546s, 13.896759525s, 14.524049421s, 14.567978788s, 18.452894792s
+Bytes In      [total, mean]              230935, 57.73
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    99.02%
+Status Codes  [code:count]               200:3961  502:17  503:22  
+Error Set:
+502 Bad Gateway
+503 Service Unavailable

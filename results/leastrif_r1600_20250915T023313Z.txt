@@ -1,0 +1,9 @@
+Requests      [total, rate, throughput]  8000, 1600.22, 52.23
+Duration      [total, attack, wait]      34.999411958s, 4.99931525s, 30.000096708s
+Latencies     [mean, 50, 95, 99, max]    27.843411343s, 30.000115519s, 30.00045359s, 30.000783161s, 30.004202458s
+Bytes In      [total, mean]              106024, 13.25
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    22.85%
+Status Codes  [code:count]               0:6172  200:1828  
+Error Set:
+Get "http://localhost:8000/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)

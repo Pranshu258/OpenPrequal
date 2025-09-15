@@ -1,0 +1,12 @@
+Requests      [total, rate, throughput]  7931, 1585.44, 42.29
+Duration      [total, attack, wait]      34.995436375s, 5.002405791s, 29.993030584s
+Latencies     [mean, 50, 95, 99, max]    25.620707327s, 30.000117935s, 30.000445849s, 30.000958332s, 30.003480125s
+Bytes In      [total, mean]              89468, 11.28
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    18.66%
+Status Codes  [code:count]               0:6392  200:1480  502:58  503:1  
+Error Set:
+Get "http://localhost:8000/": dial tcp 0.0.0.0:0->[::1]:8000: connect: connection refused
+502 Bad Gateway
+Get "http://localhost:8000/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+503 Service Unavailable

@@ -1,0 +1,11 @@
+Requests      [total, rate, throughput]  7000, 1400.21, 71.89
+Duration      [total, attack, wait]      34.999413292s, 4.999236292s, 30.000177s
+Latencies     [mean, 50, 95, 99, max]    26.852248811s, 30.000117685s, 30.000339209s, 30.000660916s, 30.002963417s
+Bytes In      [total, mean]              146885, 20.98
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    35.94%
+Status Codes  [code:count]               0:4454  200:2516  502:1  503:29  
+Error Set:
+502 Bad Gateway
+503 Service Unavailable
+Get "http://localhost:8000/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)

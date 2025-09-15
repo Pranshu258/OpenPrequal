@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vegeta results comparison — RPS 1200</title>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 24px; background: #f7fafc; color: #0f172a; }
+    table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,0.06); }
+    th, td { padding: 8px 12px; border-bottom: 1px solid #e6edf3; text-align: right; }
+    th { background: #f1f5f9; text-align: left; font-weight: 600; }
+    tr.metric-row th { text-align: left; background: #fff; font-weight: 700; }
+    tr:hover td { background: rgba(2,6,23,0.02); }
+    .metric { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
+    caption { text-align: left; font-weight:700; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+  <h1>Vegeta comparison — RPS = 1200</h1>
+  <p>Metrics for each algorithm at target RPS 1200. Latencies shown in milliseconds.</p>
+  <table>
+    <caption>RPS 1200 — metrics by algorithm (algorithms as rows)</caption>
+    <thead>
+      <tr>
+        <th>algorithm</th>
+        <th>lat_mean_ms</th>
+        <th>lat_p50_ms</th>
+        <th>lat_p95_ms</th>
+        <th>lat_p99_ms</th>
+        <th>lat_max_ms</th>
+        <th>success</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="metric">leastlatency</td><td>24045.235984</td><td>26164.749291</td><td>29705.829027</td><td>30000.14583</td><td>30001.177</td><td>0.9676666666666667</td></tr>
+      <tr><td class="metric">leastlatencyp2c</td><td>21883.477663</td><td>25030.751074</td><td>27306.191966</td><td>27436.687797</td><td>30002.822708</td><td>0.9533022014676451</td></tr>
+      <tr><td class="metric">leastrif</td><td>22454.554939</td><td>24695.858081</td><td>28587.022365</td><td>28985.434339</td><td>29168.992583</td><td>1</td></tr>
+      <tr><td class="metric">leastrifp2c</td><td>24986.751827</td><td>27098.236717</td><td>30000.12858</td><td>30000.370207</td><td>30003.69025</td><td>0.9341666666666667</td></tr>
+      <tr><td class="metric">prequal</td><td>22974.502033</td><td>25395.726437</td><td>27041.559039</td><td>27209.508574</td><td>27423.017541</td><td>1</td></tr>
+      <tr><td class="metric">random</td><td>22806.428221</td><td>25348.484847</td><td>27474.933288</td><td>27612.183898</td><td>29436.901583</td><td>0.9963333333333333</td></tr>
+      <tr><td class="metric">roundrobin</td><td>23522.123973</td><td>26182.153362</td><td>28179.493418</td><td>28442.114482</td><td>28745.522333</td><td>0.9991666666666666</td></tr>
+    </tbody>
+  </table>
+</body>
+</html>
