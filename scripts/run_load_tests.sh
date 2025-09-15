@@ -5,9 +5,9 @@
 # CONFIGURATION
 ENVIRONMENT=${1:-"local"}  # local, docker, or k8s
 NUM_BACKENDS=${2:-20}     # Number of backend servers
-USERS=${3:-1000}
+USERS=${3:-3000}
 SPAWN_RATE=${4:-100}
-RUN_TIME=${5:-"2m"}
+RUN_TIME=${5:-"4m"}
 
 # Determine which script to use based on environment
 case "$ENVIRONMENT" in
@@ -102,8 +102,8 @@ function run_test() {
     python3 scripts/profiler_analysis.py > $FINAL_RESULTS_DIR/${LABEL}_profiler_results.csv
 }
 
-run_test "default" "prequal" || echo "[WARN] prequal test failed."
 run_test "round_robin" "round_robin" || echo "[WARN] round_robin test failed."
+run_test "default" "prequal" || echo "[WARN] prequal test failed."
 run_test "random" "random" || echo "[WARN] random test failed."
 run_test "least_latency" "least_latency" || echo "[WARN] least_latency test failed."
 run_test "least_latency_p2c" "least_latency_power_of_two_choices" || echo "[WARN] least_latency_power_of_two_choices test failed."
