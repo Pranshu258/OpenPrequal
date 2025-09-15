@@ -70,11 +70,13 @@ class ProxyHandler:
         headers = dict(request.headers)
         try:
             body = await request.body()
-        except ClientDisconnect:
-            # Client disconnected while sending the request body (e.g., closed connection)
-            # Avoid letting the exception bubble up and crash the ASGI worker.
+        # Avoid letting the exception bubble up and crash the ASGI worker.
+        except ClientDisconnect:            
             logger.info("Client disconnected while sending request body; returning 499")
             return Response(content="Client disconnected", status_code=499)
+        except Exception as e:
+            logger.info(f"Unknown error happened; {e}; returning 499")
+            return Response(content="Client disconnected", status_code=500)
         logger.info(f"Proxying {method} request to {url}")
 
         custom_request_hook = getattr(Config, "CUSTOM_REQUEST_HOOK", None)
