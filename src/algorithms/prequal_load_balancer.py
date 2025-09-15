@@ -173,7 +173,7 @@ class PrequalLoadBalancer(LoadBalancer):
             healthy_backends = await self._get_cached_healthy_backends()
             await self._schedule_probe_tasks(healthy_backends)
             # wait before next scheduling cycle
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.1)
 
     @Profiler.profile
     async def get_next_backend(self) -> Optional[str]:
